@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Grow-a-Garden</title>
+<style>
+  body {
+    font-family: sans-serif;
+    background: #8b5e3c;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    color: white;
+  }
+  #field {
+    display: grid;
+    grid-gap: 5px;
+    margin: 20px 0;
+    justify-content: center;
+    align-content: center;
+  }
+  .plot {
+    width: 80px;
+    height: 80px;
+    background: #a0522d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .growth {
+    position: absolute;
+    top: 0;
+    font-size: 14px;
+    color: #fff;
+    z-index: 200;
+    pointer-events: none;
+    text-shadow: 0 0 3px #000;
+    width: 100%;
+    text-align: center;
+  }
+  .droplet {
+    position: absolute;
+    border-radius: 50%;
+    background: #00f;
+    opacity: 0;
+    animation: fadeOut 2s forwards;
+    z-index: 50;
+  }
+  @keyframes fadeOut {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(10px); }
+  }
+  .wet-drop {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    background: #00f;
+    border-radius: 50%;
+    z-index: 60;
+  }
+  .toolbar {
+    margin: 10px;
+    display: flex;
+    gap: 5px;
+  }
+  button {
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+  }
+  #coins {
+    margin-top: 5px;
+    font-weight: bold;
+  }
+  .frozen {
+    filter: hue-rotate(200deg) brightness(1.2);
+  }
+  #shopContent, #bagContent {
+    display: none;
+    margin: 10px;
+    flex-wrap: wrap;
+  }
+  .hotbar {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .hotbar-slot {
+    width: 60px;
+    height: 60px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+    position: relative;
+    font-size: 28px;
+  }
+  .hotbar-slot.selected {
+    box-shadow: 0 0 10px 3px #00ffff;
+  }
+  .hotbar-count {
+    position: absolute;
+    bottom: 2px;
+    right: 5px;
+    font-size: 14px;
+    background: rgba(0,0,0,0.6);
+    padding: 1px 3px;
+    border-radius: 5px;
+  }
+</style>
+</head>
+<body>
+<h1>Mini Grow-a-Garden 🌱</h1>
+<div class="toolbar">
+  <button onclick="toggleSeeds()">🌱 Seeds</button>
+  <button onclick="toggleGear()">⚙️ Gear</button>
+  <button onclick="toggleBag()">🎒 Inventory</button>
+  <button onclick="buyPlot()">➕ Add Plot (<span id='plotCost'>2</span>💰)</button>
+</div>
+<div id="shopContent"></div>
+<div id="bagContent"></div>
+<div id="field"></div>
+<div class="hotbar" id="hotbar"></div>
+<div id="coins">💰 20</div>
+
+<script>
+let tool='plant';
+let seed=null;
+let coins=20;
+let nextPlotCost=2;
+const priceMultiplier=1.2;
+const CROPS = {
+  carrot: { emoji: '🥕', growTime: 5, baseSell: 18, seedCost: 10, regrow:false, yield:1 },
+  strawberry: { emoji: '🍓', growTime: 5, baseSell: 14, seedCost: 50, regrow:true, yield:4 },
+  blueberry: { emoji: '🫐', growTime: 6, baseSell: 18, seedCost: 400, regrow:true, yield:10 },
+  tomato: { emoji: '🍅', growTime: 7, baseSell: 27, seedCost: 800, regrow:true, yield:6 },
+  corn: { emoji: '🌽', growTime: 7, baseSell: 36, seedCost: 1300, regrow:true, yield:1 },
+  daffodil: { emoji: '🌼', growTime: 7, baseSell: 1126, seedCost: 1000, regrow:false, yield:1 },
+  watermelon: { emoji: '🍉', growTime: 7, baseSell: 2708, seedCost: 2500, regrow:false, yield:1 },
+  orangeTulip: { emoji: '🌷', growTime: 6, baseSell: 767, seedCost: 600, regrow:false, yield:1 }
+};
+let grid = [];
+let inventory = {seeds:{}, gear:{shovel:1}};
+let hotbar = [null,null,null];
+let selectedHotbar = 0;
+
+const field=document.getElementById('field');
+const shopContent=document.getElementById('shopContent');
+const bagContent=document.getElementById('bagContent');
+const coinsDiv=document.getElementById('coins');
+const plotCostSpan=document.getElementById('plotCost');
+const hotbarDiv=document.getElementById('hotbar');
+
+// --- INITIAL PLOTS ---
+for(let i=0;i<4;i++) grid.push({crop:null,growth:0,mutations:[],wetDrops:[]});
+
+// --- SAVE / LOAD ---
+function saveProgress() {
+    const saveData = {
+        coins: coins,
+        plots: grid.map(p=>({crop:p.crop,growth:p.growth,mutations:p.mutations,wetDrops:[]})),
+        nextPlotPrice: nextPlotCost,
+        inventory: inventory,
+        hotbar: hotbar,
+        selectedHotbar: selectedHotbar
+    };
+    localStorage.setItem('farmSave', JSON.stringify(saveData));
+}
+
+function loadProgress() {
+    const saveData = JSON.parse(localStorage.getItem('farmSave'));
+    if(!saveData) return;
+    coins = saveData.coins || 20;
+    nextPlotCost = saveData.nextPlotPrice || 2;
+    inventory = saveData.inventory || {seeds:{}, gear:{shovel:1}};
+    hotbar = saveData.hotbar || [null,null,null];
+    selectedHotbar = saveData.selectedHotbar || 0;
+    grid = saveData.plots.map(p=>({crop:p.crop,growth:p.growth,mutations:p.mutations||[],wetDrops:[]}));  
+    render();
+    renderBag();
+    renderHotbar();
+}
+
+loadProgress();
+
+// --- SHOP TOGGLES ---
+function toggleSeeds(){
+    shopContent.innerHTML='';
+    shopContent.style.display = shopContent.style.display==='none'?'flex':'none';
+    Object.keys(CROPS).sort((a,b)=>CROPS[a].seedCost-CROPS[b].seedCost).forEach(k=>{
+        let b=document.createElement('button');
+        b.textContent=CROPS[k].emoji+' '+k+' ('+CROPS[k].seedCost+'💰)';
+        b.onclick=()=>buySeed(k);
+        shopContent.appendChild(b);
+    });
+}
+function toggleGear(){
+    shopContent.innerHTML='';
+    shopContent.style.display = shopContent.style.display==='none'?'flex':'none';
+    let b=document.createElement('button');
+    b.textContent='💧 Water x10 (50000💰)';
+    b.onclick=()=>buyWater();
+    shopContent.appendChild(b);
+}
+
+// --- BAG ---
+function toggleBag(){
+    bagContent.style.display = bagContent.style.display==='none'?'flex':'none';
+    renderBag();
+}
+
+function renderBag(){
+    bagContent.innerHTML='';
+    ['seeds','gear'].forEach(type=>{
+        for(let item in inventory[type]){
+            if(inventory[type][item]>0){
+                let b=document.createElement('button');
+                b.textContent = type==='gear'? 
+                    (item==='shovel'?'🪓 Shovel':'💧 Water x'+inventory[type][item]) :
+                    `${CROPS[item].emoji} ${item} x${inventory[type][item]}`;
+                b.dataset.itemId = item;
+                makeDraggable(b);
+                b.onclick=()=>{ 
+                    if(type==='gear'){ tool=item==='shovel'?'shovel':'water'; seed=null; }
+                    else { seed=item; tool='plant'; }
+                    if(!hotbar.includes(item)){
+                        let emptyIndex = hotbar.indexOf(null);
+                        if(emptyIndex!==-1) hotbar[emptyIndex]=item;
+                    }
+                    renderHotbar();
+                    saveProgress();
+                };
+                bagContent.appendChild(b);
+            }
+        }
+    });
+}
+
+// --- BUY FUNCTIONS ---
+function addToInventory(type,item){
+    if(!inventory[type][item]) inventory[type][item]=0;
+    inventory[type][item]++;
+    renderBag();
+    saveProgress();
+}
+
+function buySeed(crop){
+    if(coins>=CROPS[crop].seedCost){
+        coins-=CROPS[crop].seedCost;
+        addToInventory('seeds',crop);
+        render();
+        saveProgress();
+    }
+}
+function buyWater(){
+    if(coins>=50000){
+        coins-=50000;
+        addToInventory('gear','water');
+        render();
+        saveProgress();
+    }
+}
+function buyPlot(){
+    if(coins>=nextPlotCost){
+        coins-=nextPlotCost;
+        grid.push({crop:null,growth:0,mutations:[],wetDrops:[]});
+        nextPlotCost = Math.ceil(nextPlotCost*priceMultiplier);
+        plotCostSpan.textContent = nextPlotCost;
+        render();
+        saveProgress();
+    }
+}
+
+// --- HOTBAR ---
+function renderHotbar(){
+    hotbarDiv.innerHTML='';
+    hotbar.forEach((item,i)=>{
+        let slot=document.createElement('div');
+        slot.className='hotbar-slot'+(i===selectedHotbar?' selected':'');
+        if(item){
+            slot.textContent = item==='water'?'💧':CROPS[item]?.emoji||'🪓';
+            let count = inventory.seeds[item] || inventory.gear[item] || 0;
+            if(count>1){
+                let c=document.createElement('div');
+                c.className='hotbar-count';
+                c.textContent='x'+count;
+                slot.appendChild(c);
+            }
+        }
+        slot.onclick=()=>{
+            if(hotbar[i]){
+                // if clicked again, remove item from hotbar
+                if(i===selectedHotbar){
+                    hotbar[i] = null;
+                    tool='plant';
+                    seed=null;
+                } else {
+                    selectedHotbar=i;
+                    let selectedItem = hotbar[i];
+                    tool=selectedItem==='water'?'water':selectedItem==='shovel'?'shovel':'plant';
+                    seed=selectedItem && selectedItem!=='water' && selectedItem!=='shovel'?selectedItem:null;
+                }
+                renderHotbar();
+                saveProgress();
+            }
+        }
+        
+        // Allow dropping items into hotbar slots
+        slot.ondragover = e => e.preventDefault();
+        slot.ondrop = e => {
+            e.preventDefault();
+            let draggedItem = e.dataTransfer.getData('text/plain');
+            if(!hotbar.includes(draggedItem)){
+                hotbar[i] = draggedItem;
+                renderHotbar();
+                saveProgress();
+            }
+        };
+
+        hotbarDiv.appendChild(slot);
+    });
+}
+
+// Make inventory items draggable
+function makeDraggable(itemElement){
+    itemElement.draggable=true;
+    itemElement.addEventListener('dragstart', e=>{
+        e.dataTransfer.setData('text/plain', itemElement.dataset.itemId);
+    });
+}
+
+// --- FIELD ---
+function render(){
+    field.innerHTML='';
+    let cols = Math.ceil(Math.sqrt(grid.length));
+    field.style.gridTemplateColumns = `repeat(${cols},80px)`;
+    grid.forEach((p,i)=>{
+        let b=document.createElement('div');
+        b.className='plot';
+        if(p.crop){
+            let g=document.createElement('div');
+            g.className='growth';
+            g.textContent=Math.floor(p.growth)+'%' + (p.mutations.length ? ' ('+p.mutations.join(',')+')':'');
+            b.appendChild(g);
+            let c=document.createElement('span');
+            c.textContent=CROPS[p.crop].emoji;
+            if(p.mutations.includes('frozen')) c.classList.add('frozen');
+            b.appendChild(c);
+            if(p.mutations.includes('wet') && p.wetDrops.length===0){
+                let drop=document.createElement('div');
+                drop.className='wet-drop';
+                drop.style.left=Math.random()*70+'px';
+                drop.style.top=Math.random()*70+'px';
+                b.appendChild(drop);
+                p.wetDrops.push(drop);
+            }
+        }
+        b.onclick=()=>onTileClick(i,b);
+        field.appendChild(b);
+    });
+    coinsDiv.textContent=`💰 ${coins}`;
+    renderHotbar();
+    plotCostSpan.textContent = nextPlotCost;
+}
+
+function createDroplets(plot){
+    for(let i=0;i<5;i++){
+        let d=document.createElement('div');
+        d.className='droplet';
+        let size=Math.random()*5+3;
+        d.style.width=d.style.height=size+'px';
+        d.style.left=Math.random()*(80-size)+'px';
+        d.style.top=Math.random()*(80-size)+'px';
+        plot.appendChild(d);
+        setTimeout(()=>plot.removeChild(d),2000);
+    }
+}
+
+function onTileClick(i,plot){
+    let p=grid[i];
+    if(tool==='plant' && seed){
+        if(!p.crop && inventory['seeds'][seed]>0){
+            p.crop=seed; p.growth=0; p.mutations=[];
+            inventory['seeds'][seed]--;
+            hotbar.forEach((h,i2)=>{
+                if(h===seed && inventory['seeds'][seed]===0) hotbar[i2]=null;
+            });
+        }
+    } else if(tool==='water'){
+        if(p.crop && inventory['gear']['water']>0){
+            p.growth+=15;
+            createDroplets(plot);
+            if(Math.random()<0.2 && !p.mutations.includes('wet')) p.mutations.push('wet');
+            inventory['gear']['water']--;
+            hotbar.forEach((h,i2)=>{
+                if(h==='water' && inventory['gear']['water']===0) hotbar[i2]=null;
+            });
+        }
+    } else if(tool==='shovel'){
+        grid[i]={crop:null,growth:0,mutations:[],wetDrops:[]};
+    }
+
+    if(p.crop && p.growth>=100){
+        let sellPrice = CROPS[p.crop].baseSell;
+        let multiplier=1;
+        if(p.mutations.includes('wet')) multiplier*=2;
+        if(p.mutations.includes('frozen')) multiplier*=10;
+        coins+=sellPrice*multiplier*CROPS[p.crop].yield;
+        if(CROPS[p.crop].regrow){ p.growth=0; p.mutations=[]; }
+        else { grid[i]={crop:null,growth:0,mutations:[],wetDrops:[]}; }
+    }
+    render();
+    renderBag();
+    saveProgress();
+}
+
+// passive growth
+setInterval(()=>{
+    grid.forEach(p=>{
+        if(p.crop && p.growth<100){
+            p.growth+=100/CROPS[p.crop].growTime/10;
+            p.growth=Math.min(p.growth,100);
+        }
+    });
+    render();
+    saveProgress();
+},1000);
+
+render();
+</script>
+</body>
+</html>

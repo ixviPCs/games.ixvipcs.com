@@ -48,69 +48,34 @@
       z-index: 1001;
       display: none;
     }
-    #shopUI {
-      position: fixed;
-      bottom: 50px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 400px;
-      padding: 15px;
-      border: 2px solid #fff;
-      border-radius: 10px;
-      background: #000;
-      display: none;
-      z-index: 1002;
-      text-align: center;
-    }
-    #shopUI button {
-      margin: 5px;
-      padding: 8px 12px;
-      background: #222;
-      color: white;
-      border: none;
-      cursor: pointer;
-      border-radius: 5px;
-    }
-    #shopUI button:hover { background: #555; }
   </style>
 </head>
 <body>
   <canvas id="game" width="800" height="600"></canvas>
   <button id="fullscreen-btn">Fullscreen</button>
   <input id="codeBox" type="text" placeholder="Enter code...">
-  <div id="shopUI">
-    <h3>SHOP</h3>
-    <p>Coins: <span id="coinsDisplay">0</span></p>
-    <button id="buyMissile">Buy 5 Missiles (20 Coins)</button>
-    <button id="closeShop">Close</button>
-  </div>
 
   <script>
     window.onload = function () {
       function loadImages(images, callback) {
-        let loaded = 0;
-        const total = images.length;
-        images.forEach(img => {
-          img.onload = () => { 
-            loaded++; 
-            if (loaded === total) callback(); 
-          };
-          img.onerror = () => { 
-            console.warn("Failed to load image:", img.src); 
-            loaded++; 
-            if (loaded === total) callback(); 
-          };
-        });
-      }
-
+  let loaded = 0;
+  const total = images.length;
+  images.forEach(img => {
+    img.onload = () => { 
+      loaded++; 
+      if (loaded === total) callback(); 
+    };
+    img.onerror = () => { 
+      console.warn("Failed to load image:", img.src); 
+      loaded++; 
+      if (loaded === total) callback(); 
+    };
+  });
+}
       const canvas = document.getElementById("game");
       const ctx = canvas.getContext("2d");
       const fullscreenBtn = document.getElementById("fullscreen-btn");
       const codeBox = document.getElementById("codeBox");
-      const shopUI = document.getElementById("shopUI");
-      const coinsDisplay = document.getElementById("coinsDisplay");
-      const buyMissileBtn = document.getElementById("buyMissile");
-      const closeShopBtn = document.getElementById("closeShop");
 
       // === Ship Images ===
       const playerStraightDefault = new Image(); playerStraightDefault.src = "GoingStraight.png";
@@ -150,22 +115,12 @@
       const bulletImg = new Image(); bulletImg.src = "bullet.png";
       const heartImg = new Image(); heartImg.src = "heart.png";
 
-      // === New images ===
-      const bossImg = new Image(); bossImg.src = "boss.png";
-      const missileImg = new Image(); missileImg.src = "missile.png";
-      const allyImg = new Image(); allyImg.src = "ally.png";
-      const enemyAllyImg = new Image(); enemyAllyImg.src = "enemyally.png";
-      const allyBulletImg = new Image(); allyBulletImg.src = "ally bullet.png";
-      const enemyAllyBulletImg = new Image(); enemyAllyBulletImg.src = "enemyallybullet.png";
-
       const allImages = [
         playerStraightDefault, playerLeftDefault, playerRightDefault,
         toriSprite, gioLeft, gioRight, gioStraight, gioBulletImg,
-        enemyImg, bulletImg, heartImg,
-        bossImg, missileImg, allyImg, enemyAllyImg, allyBulletImg, enemyAllyBulletImg
+        enemyImg, bulletImg, heartImg
       ];
-
-      // === Player ===
+      
       const player = {
         x: canvas.width/2-25,
         y: canvas.height-60,
@@ -178,8 +133,6 @@
 
       const bullets = [];
       const enemies = [];
-      const allies = [];
-      const missiles = [];
       let keys = {};
       let totalKills = 0;
       let superKillCounter = 0;
@@ -198,16 +151,6 @@
       let infiniteSuperBeam = false;
       let invincibleMode = false;
 
-      // === Coins & missiles ===
-      let coins = parseInt(localStorage.getItem("coins")||"0");
-      let missileCount = 0;
-
-      coinsDisplay.innerText = coins;
-
-      // === Boss ===
-      let boss = null;
-
-      // === Event listeners ===
       document.addEventListener("keydown", (e)=>{
         if ((e.key==="t"||e.key==="T") && codeBox.style.display!=="block") {
           e.preventDefault();
@@ -239,12 +182,6 @@
         }
       });
 
-      closeShopBtn.onclick = ()=>{ shopUI.style.display="none"; };
-      buyMissileBtn.onclick = ()=>{
-        if(coins>=20){ missileCount+=5; coins-=20; coinsDisplay.innerText=coins; localStorage.setItem("coins", coins); }
-      };
-
-      // === Spawn enemy ===
       function spawnEnemy(){
         const size=40;
         enemies.push({x:Math.random()*(canvas.width-size),y:-size,width:size,height:size,speed:2});
@@ -252,11 +189,8 @@
 
       function enemyDestroyed(isSuperKill=false){
         totalKills++; superKillCounter++;
-        score+=isSuperKill?300:100;
-        coins = Math.floor(score/100);
-        localStorage.setItem("coins", coins);
-        coinsDisplay.innerText = coins;
         if(superKillCounter>=30) canUseSuper=true;
+        score+=isSuperKill?300:100;
       }
 
       function checkCollision(a,b){
@@ -269,9 +203,6 @@
         return c.x>=enemy.x && c.x<=enemy.x+enemy.width && c.y>=enemy.y+enemy.height-hb && c.y<=enemy.y+enemy.height;
       }
 
-      // === Update ===
-      let allyFireTimer=0;
-      let allyLaserTimer=0;
       function update(deltaTime){
         if(gameOver) return;
 
@@ -281,7 +212,7 @@
         else player.currentImage=playerStraight;
         player.x=Math.max(0,Math.min(canvas.width-player.width,player.x));
 
-        // Player fire
+        // Fire bullets
         if(keys["ArrowUp"] && performance.now()-lastFireTime>(zeroBulletCooldown?0:fireCooldown)){
           bullets.push({x:player.x+player.width/2-2,y:player.y,width:4,height:10,speed:7});
           lastFireTime=performance.now();
@@ -292,6 +223,8 @@
           superBeamActive=true;
           superBeamTimer=infiniteSuperBeam?5000:2500;
           canUseSuper=false;
+
+          // Subtract 30 kills instead of resetting
           superKillCounter -= 30;
           if (superKillCounter < 0) superKillCounter = 0;
         }
@@ -300,20 +233,6 @@
           if(superBeamTimer<=0) superBeamActive=false;
         }
         if(infiniteSuperBeam && !keys["ArrowDown"]) superBeamActive=false;
-
-        // Allies auto-fire
-        allyFireTimer+=deltaTime;
-        allyLaserTimer+=deltaTime;
-        if(allyFireTimer>=1000){
-          allies.forEach(a=>{ bullets.push({x:a.x+10,y:a.y,width:4,height:10,speed:5}); });
-          allyFireTimer=0;
-        }
-
-        // Ally mini laser every 10s
-        if(allyLaserTimer>=10000){
-          enemies.forEach((e,i)=>{ bullets.push({x:e.x+e.width/2,y:canvas.height,width:2,height:canvas.height, speed:-15}); });
-          allyLaserTimer=0;
-        }
 
         // Update bullets
         for(let i=bullets.length-1;i>=0;i--){ bullets[i].y-=bullets[i].speed; if(bullets[i].y<0) bullets.splice(i,1); }
@@ -336,23 +255,19 @@
           if(i<enemies.length && enemies[i].y>canvas.height) enemies.splice(i,1);
         }
 
-        // Super beam effect
         if (superBeamActive) {
-          enemies.forEach((e, i) => {
-            const beamX = player.x + player.width / 2 - 5;
-            const beamWidth = 10;
-            if (e.x + e.width > beamX && e.x < beamX + beamWidth) {
-              enemies.splice(i, 1);
-              enemyDestroyed(true);
-            }
-          });
-        }
-
-        // Open shop every 1000 points
-        if(score>0 && score%1000<5) shopUI.style.display="block";
+  enemies.forEach((e, i) => {
+    // Check if enemy is within the vertical beam area
+    const beamX = player.x + player.width / 2 - 5;
+    const beamWidth = 10;
+    if (e.x + e.width > beamX && e.x < beamX + beamWidth) {
+      enemies.splice(i, 1);       // destroy enemy
+      enemyDestroyed(true);       // count as super kill
+    }
+  });
+}
       }
 
-      // === Draw ===
       function draw(){
         ctx.clearRect(0,0,canvas.width,canvas.height);
         ctx.drawImage(player.currentImage,player.x,player.y,player.width,player.height);
@@ -365,7 +280,6 @@
         ctx.fillText("Score: "+score,canvas.width-130,50);
         ctx.fillText("Kills: "+totalKills,10,30);
         ctx.fillText("Super Beam: "+(infiniteSuperBeam?"♾️":superKillCounter+"/30"),10,60);
-        ctx.fillText("Coins: "+coins,canvas.width-130,80);
 
         if(superBeamActive){ ctx.fillStyle="#FF5F1F"; ctx.fillRect(player.x+player.width/2-5,0,10,player.y); }
 
@@ -387,10 +301,9 @@
         draw();
         requestAnimationFrame(gameLoop);
       }
-
-      loadImages(allImages, () => {
-        gameLoop();
-      });
+    loadImages(allImages, () => {
+  gameLoop();
+});
     };
   </script>
 </body>

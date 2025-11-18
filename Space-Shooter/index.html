@@ -57,6 +57,21 @@
 
   <script>
     window.onload = function () {
+      function loadImages(images, callback) {
+  let loaded = 0;
+  const total = images.length;
+  images.forEach(img => {
+    img.onload = () => { 
+      loaded++; 
+      if (loaded === total) callback(); 
+    };
+    img.onerror = () => { 
+      console.warn("Failed to load image:", img.src); 
+      loaded++; 
+      if (loaded === total) callback(); 
+    };
+  });
+}
       const canvas = document.getElementById("game");
       const ctx = canvas.getContext("2d");
       const fullscreenBtn = document.getElementById("fullscreen-btn");
@@ -100,6 +115,12 @@
       const bulletImg = new Image(); bulletImg.src = "images/bullet.png";
       const heartImg = new Image(); heartImg.src = "images/heart.png";
 
+      const allImages = [
+        playerStraightDefault, playerLeftDefault, playerRightDefault,
+        toriSprite, gioLeft, gioRight, gioStraight, gioBulletImg,
+        enemyImg, bulletImg, heartImg
+      ];
+      
       const player = {
         x: canvas.width/2-25,
         y: canvas.height-60,
@@ -280,7 +301,9 @@
         draw();
         requestAnimationFrame(gameLoop);
       }
-      gameLoop();
+    loadImages(allImages, () => {
+  gameLoop();
+});
     };
   </script>
 </body>

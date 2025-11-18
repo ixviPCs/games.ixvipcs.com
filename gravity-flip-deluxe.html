@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Gravity Flip Deluxe</title>
+<style>
+  :root{
+    --bg:#071026; --panel:#0f2745; --accent:#2bb673; --muted:#9fb7d8;
+    --ui:#13263f; --glass:rgba(255,255,255,0.04);
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#d7eefc;background:var(--bg)}
+#container {
+  max-width: 1050px;
+  margin: 14px auto; /* auto left/right centers it */
+  padding: 12px;
+}
+  #topbar{display:flex;gap:12px;align-items:center;padding:10px;border-radius:12px;background:linear-gradient(180deg,var(--panel),#072035);box-shadow:0 6px 30px rgba(0,0,0,.7)}
+  #hud-left{display:flex;gap:12px;align-items:center;}
+  .pill{background:var(--ui);padding:8px 12px;border-radius:10px;display:flex;gap:8px;align-items:center}
+  #coins {font-weight:700;color:gold}
+  button{background:var(--accent);border:0;padding:8px 12px;border-radius:10px;color:#032;padding-left:14px;padding-right:14px;cursor:pointer;font-weight:700}
+  #gamewrap {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  justify-content: center; /* centers the canvas & sidebar horizontally */
+  align-items: flex-start; /* keeps them aligned at the top */
+}
+  canvas{background:#07182b;border-radius:10px;display:block;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  #sidebar{width:320px;background:linear-gradient(180deg,#07293f,#041425);border-radius:12px;padding:12px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+  h3{margin:6px 0 8px 0}
+  .muted{color:var(--muted);font-size:13px}
+  .shop-btn{background:#2a5fd3;color:#fff;padding:8px;border-radius:8px;border:0;cursor:pointer}
+  .stat{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,0.03);color:#cde6ff}
+  .upgrade{background:var(--glass);padding:8px;border-radius:8px;margin-bottom:8px}
+  .upgrade h4{margin:0 0 6px 0}
+  .bought{opacity:.5}
+  #modal{position:fixed;left:0;top:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5)}
+  #modal .panel{width:720px;background:#072035;border-radius:12px;padding:14px}
+  .row{display:flex;gap:8px;align-items:center}
+  .skin-swatch{width:36px;height:36px;border-radius:8px;display:inline-block;border:2px solid rgba(255,255,255,0.04)}
+  .lvl-list{max-height:220px;overflow:auto;padding:6px;border-radius:8px;background:rgba(255,255,255,0.02)}
+  .small{font-size:13px;color:var(--muted)}
+  .center{display:flex;align-items:center;justify-content:center}
+  .bigcoin{font-weight:900;color:gold;font-size:18px}
+  .hint{color:var(--muted);font-size:13px;margin-top:8px}
+  .ghost{opacity:.4}
+</style>
+</head>
+<body>
+<div id="container">
+  <div id="topbar">
+    <div id="hud-left">
+      <div class="pill">Level: <span id="level">1</span></div>
+      <div class="pill">Moves: <span id="moves">0</span></div>
+      <div class="pill">Coins: <span id="coins">0</span></div>
+      <div class="pill muted">Gravity: <span id="gravDir">Down</span></div>
+      <div class="pill muted">Double jump: <span id="djState">No</span></div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      
+      <button id="shopOpen">Shop</button>
+      <button id="reset">Reset</button>
+      <button id="clearSave" class="ghost">Clear Save</button>
+    </div>
+  </div>
+
+  <div id="gamewrap">
+    <canvas id="game" width=900 height=600></canvas>
+
+    <div id="sidebar">
+      <h3>Progression</h3>
+      <div class="small">Permanent upgrades saved locally. Hit the Shop to buy rad powers. You die if you fall out the bottom — not the top.</div>
+      <div style="height:12px"></div>
+      <div class="stat"><div>Coins</div><div class="bigcoin" id="coinDisplay">0</div></div>
+      <div class="stat"><div>Owned Upgrades</div><div id="ownedList">—</div></div>
+
+      <h3 style="margin-top:12px">Active Perks</h3>
+      <div class="small">These change gameplay right away.</div>
+      <div style="height:8px"></div>
+      <div id="perksArea"></div>
+
+      <h3 style="margin-top:12px">Levels</h3>
+      <div class="lvl-list" id="levelList"></div>
+      <div class="hint">Double-click canvas to skip a level (debug).</div>
+    </div>
+  </div>
+</div>
+
+<!-- Shop Modal -->
+<div id="modal">
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h2 style="margin:0">Shop — Buy Upgrades</h2>
+      <div><button id="closeShop">Close</button></div>
+    </div>
+    <div style="display:flex;gap:14px;margin-top:12px">
+      <div style="flex:1">
+        <h4 class="small">Coins: <span id="modalCoins">0</span></h4>
+        <div id="upgradesList" style="margin-top:8px"></div>
+      </div>
+      <div style="width:260px">
+        <h4 class="small">Skins</h4>
+        <div id="skinsArea"></div>
+        <h4 class="small" style="margin-top:12px">Sound & Settings</h4>
+        <div style="margin-top:6px">
+          <div class="row"><label><input type="checkbox" id="toggleSound" checked/> Sound</label></div>
+          <div class="row"><label><input type="checkbox" id="toggleMusic" checked/> Music</label></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+Gravity Flip Deluxe
+- permanent upgrades saved in localStorage
+- shop modal with many upgrades & skins
+- coins spawn as '5' in level map
+- die if you drop off bottom (player.y > canvas.height + 50)
+- hitting top just stops you (no death)
+- synth-based sound effects
+*/
+
+// ===== CONFIG =====
+const TILE = 48;
+const GRAVITY_BASE = 0.9;
+const MAX_FALL_BASE = 20;
+const MOVE_SPEED_BASE = 2.2;
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ===== LEVELS (0 empty, 1 block, 2 start, 3 goal, 4 spike, 5 coin) =====
+const levels = [
+  [
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000005000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000030000",
+    "000000000000000000111100",
+    "000000000000000000000000",
+    "000000000000000020000000",
+    "111111111111111111111111"
+  ],
+  [
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000030000",
+    "000000000000000000000000",
+    "000000000000000000005000",
+    "000000000000000000000000",
+    "000000020000000000000000",
+    "000000000000000000000000",
+    "111101111110001111111111",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "111111111111111111111111"
+  ],
+  // coins corridor, small jumps
+  [
+    "000000000000000000000000",
+    "000000005000000050000000",
+    "000000000000000000000000",
+    "000000200000000000000000",
+    "000000111000000000000000",
+    "000000000000000000000000",
+    "000000000000005000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000001111111000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "111111111111111111111111"
+  ],
+  // spikes and narrow dodge (with coins)
+  [
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000003000000000000000000",
+    "000001000000000000000000",
+    "000001000000000000000000",
+    "000001000000000000000000",
+    "000001000000000000000000",
+    "000001000000000000000000",
+    "000001000000000000000000",
+    "000001000000000000020000",
+    "111111111111111111111111",
+    "000000000000000000000000",
+    "000000000000000000000005",
+    "000000000000000000000000"
+  ],
+  // wide open level with coins and a higher challenge
+  [
+    "000000000000000000000000",
+    "000000000000005000000000",
+    "000000000000005000000000",
+    "000000000000000000030000",
+    "000020000000000000000000",
+    "000000111110000000500000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "000001111111000000000000",
+    "000000000500000000000000",
+    "000000000000000000000000",
+    "000000000000000000000000",
+    "111111111111111111111111"
+  ]
+];
+
+// ===== GAME STATE =====
+let lvl = 0;
+let grid = [];
+let coinsOnMap = []; // coin entities with x,y
+let player = {};
+let keys = {left:false,right:false};
+let gravityDir = 1; // 1 down, -1 up
+let moves = 0;
+
+// persistent progression (localStorage)
+const SAVE_KEY = 'gf_deluxe_save_v1';
+let save = {
+  coins: 0,
+  owned: {}, // upgradeId: true
+  skinsOwned: {}, // skinId: true
+  equippedSkin: 'default',
+  upgrades: {} // stores upgrade levels if applicable
+};
+
+// ===== UPGRADES =====
+const upgradeDefs = [
+  {id:'speed1', name:'Move Speed I', price:100, desc:'+20% move speed', apply: s=> s.moveSpeed *= 1.2, single:true},
+  {id:'speed2', name:'Move Speed II', price:300, desc:'+40% move speed', apply: s=> s.moveSpeed *= 1.4, single:true, req:'speed1'},
+  {id:'lowgrav', name:'Light Gravity', price:180, desc:'gravity -20%', apply: s=> s.gravity *= 0.8, single:true},
+  {id:'maxfall', name:'Safe Fall', price:140, desc:'reduce max fall speed (smoother landings)', apply: s=> s.maxFall *= 0.75, single:true},
+  {id:'doublejump', name:'Double Jump', price:220, desc:'Allows an extra mid-air jump', apply: s=> s.doubleJump = true, single:true},
+  {id:'magnet', name:'Coin Magnet', price:200, desc:'Automatically pull coins within short range', apply: s=> s.magnet = true, single:true},
+  {id:'coinx2', name:'Coin Multiplier', price:400, desc:'Coins x2 from map', apply: s=> s.coinMult *= 2, single:true},
+  {id:'jetpack', name:'Jetpack', price:600, desc:'Short flight bursts (hold Space after flip)', apply: s=> s.jetpack = true, single:true},
+  {id:'extrahp', name:'Extra Life', price:350, desc:'Start each run with 1 extra life', apply: s=> s.extraLives = (s.extraLives||0)+1, single:false},
+  {id:'slowgrav', name:'Slow Gravity Mode', price:450, desc:'gravity acceleration -40%', apply: s=> s.gravity *= 0.6, single:true}
+];
+  
+// skins (super crazy — color + tiny style)
+const skins = [
+  {id:'default', name:'Default', price:0, desc:'OG pale blob', draw: (ctx, x,y,w,h,grav)=> {
+    ctx.fillStyle = '#bfe1ff'; roundRect(ctx, x-w/2, y-h/2, w, h, 6); ctx.fill();
+    ctx.fillStyle='#031724'; // eyes
+    if(grav>0){ ctx.fillRect(x-8, y-6,6,6); ctx.fillRect(x+4, y-6,6,6); } else { ctx.fillRect(x-8, y+0,6,6); ctx.fillRect(x+4, y+0,6,6); }
+  }},
+  {id:'robot', name:'Robot', price:200, desc:'Metal boi', draw: (ctx,x,y,w,h,grav)=> {
+    ctx.fillStyle='#c6c6c6'; roundRect(ctx,x-w/2,y-h/2,w,h,6); ctx.fill();
+    ctx.fillStyle='#181818'; ctx.fillRect(x-10,y-6,6,6); ctx.fillRect(x+4,y-6,6,6);
+    ctx.fillStyle='#8df7a6'; ctx.fillRect(x-6,y+6,12,4);
+  }},
+  {id:'slime', name:'Slime', price:220, desc:'Jelly boi', draw:(ctx,x,y,w,h,grav)=>{
+    ctx.fillStyle='#77f78f'; roundRect(ctx,x-w/2,y-h/2,w,h,8); ctx.fill();
+    ctx.fillStyle='#052114'; ctx.fillRect(x-8,y-6,6,6); ctx.fillRect(x+4,y-6,6,6);
+    // drip
+    ctx.beginPath(); ctx.arc(x-14,y+12,6,0,Math.PI); ctx.fill();
+  }},
+  {id:'ninja', name:'Ninja', price:260, desc:'Stealth variant', draw:(ctx,x,y,w,h,grav)=>{
+    ctx.fillStyle='#111524'; roundRect(ctx,x-w/2,y-h/2,w,h,6); ctx.fill();
+    ctx.fillStyle='#ffd86b'; if(grav>0){ctx.fillRect(x-8,y-6,6,6);ctx.fillRect(x+4,y-6,6,6)} else {ctx.fillRect(x-8,y+0,6,6);ctx.fillRect(x+4,y+0,6,6)}
+    ctx.fillStyle='#c0c0c0'; ctx.fillRect(x-14,y-14,28,3);
+  }},
+  {id:'glow', name:'Glowy', price:320, desc:'Emissive outline', draw:(ctx,x,y,w,h,grav)=>{
+    ctx.fillStyle='#a9f0ff'; roundRect(ctx,x-w/2,y-h/2,w,h,8); ctx.fill();
+    ctx.shadowColor = '#7ef7d4'; ctx.shadowBlur = 10;
+    ctx.fillStyle='#05293b'; ctx.fillRect(x-8,y-6,6,6); ctx.fillRect(x+4,y-6,6,6);
+    ctx.shadowBlur = 0;
+  }}
+];
+
+// ===== AUDIO (simple synth) =====
+let audioCtx = null;
+function ensureAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function sfxBeep(freq, length=0.08, type='sine', gain=0.15){
+  if(!save.settings?.sound) return;
+  ensureAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.value = gain;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start();
+  g.gain.setValueAtTime(g.gain.value, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + length);
+  o.stop(audioCtx.currentTime + length + 0.02);
+}
+function sfxCoin(){ sfxBeep(1200,0.09,'triangle',0.12) }
+function sfxJump(){ sfxBeep(500,0.08,'sawtooth',0.12) }
+function sfxDeath(){ sfxBeep(120,0.2,'sine',0.2) }
+function sfxGoal(){ sfxBeep(900,0.14,'sine',0.16) }
+
+// ===== SAVE / LOAD =====
+function loadSave(){
+  const raw = localStorage.getItem(SAVE_KEY);
+  if(raw) try { Object.assign(save, JSON.parse(raw)); } catch(e){ console.warn('bad save') }
+  if(!save.settings) save.settings = {sound:true,music:true};
+  if(!save.equippedSkin) save.equippedSkin = 'default';
+  if(!save.skinsOwned) save.skinsOwned = {default:true};
+  if(!save.owned) save.owned = {};
+  if(!save.upgrades) save.upgrades = {};
+}
+function saveNow(){ localStorage.setItem(SAVE_KEY, JSON.stringify(save)); updateUI(); }
+
+// ===== PARSE LEVEL =====
+function parseLevel(raster){
+  grid = raster.map(row => row.split('').map(ch => parseInt(ch)));
+  coinsOnMap = [];
+  for(let y=0;y<grid.length;y++){
+    for(let x=0;x<grid[y].length;x++){
+      if(grid[y][x]===2){ player.x = x*TILE + TILE/2; player.y = y*TILE + TILE/2; }
+      if(grid[y][x]===5){
+        coinsOnMap.push({x:x*TILE + TILE/2, y:y*TILE + TILE/2, collected:false});
+        grid[y][x] = 0; // coin is entity, not solid
+      }
+    }
+  }
+}
+
+// ===== START LEVEL =====
+function startLevel(i){
+  lvl = i;
+  document.getElementById('level').textContent = (lvl+1);
+  moves = 0;
+  gravityDir = 1;
+  player = {x:100,y:100,vx:0,vy:0,w:28,h:36,onGround:false,canDouble:true, lives: (save.extraLives||0)+1};
+  parseLevel(levels[lvl]);
+  updateUI();
+}
+
+// ===== STATS OBJECT (modified by upgrades) =====
+function baseStats(){ return {
+  gravity: GRAVITY_BASE,
+  maxFall: MAX_FALL_BASE,
+  moveSpeed: MOVE_SPEED_BASE,
+  doubleJump: false,
+  magnet: false,
+  coinMult: 1,
+  jetpack: false,
+  extraLives: 0
+}; }
+function currentStats(){
+  const s = baseStats();
+  // apply purchased upgrades
+  for(const u of upgradeDefs){
+    if(save.owned[u.id]) u.apply(s);
+  }
+  // persist upgrade-based extras
+  if(save.upgrades) Object.assign(s, save.upgrades);
+  return s;
+}
+
+// ===== COLLISION HELPERS =====
+function tileAt(px,py){
+  const tx = Math.floor(px / TILE);
+  const ty = Math.floor(py / TILE);
+  if(ty<0 || ty>=grid.length || tx<0 || tx>=grid[0].length) return 1;
+  return grid[ty][tx];
+}
+function solidAt(px,py){
+  const t = tileAt(px,py);
+  return t===1;
+}
+function spikeAt(px,py){ return tileAt(px,py)===4; }
+function goalAt(px,py){ return tileAt(px,py)===3; }
+
+// ===== INPUT =====
+window.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft') keys.left=true;
+  if(e.key==='ArrowRight') keys.right=true;
+  if(e.code==='Space'){
+    gravityDir *= -1;
+    moves++;
+    if(save.settings.sound) sfxJump();
+    // jetpack: if owned and holding space after flip, give temporary upward thrust next frames (handled in update)
+    player.canDouble = true; // allow double jump once flip
+    updateHUD();
+  }
+  if(e.key==='r') resetLevel();
+});
+window.addEventListener('keyup', e=>{
+  if(e.key==='ArrowLeft') keys.left=false;
+  if(e.key==='ArrowRight') keys.right=false;
+});
+//canvas.addEventListener('dblclick', ()=> nextLevel()); // debug skip
+
+document.getElementById('reset').addEventListener('click', resetLevel);
+document.getElementById('shopOpen').addEventListener('click', ()=>{ openShop() });
+document.getElementById('closeShop').addEventListener('click', ()=>{ closeShop() });
+document.getElementById('clearSave').addEventListener('click', ()=>{
+  if(confirm('Clear save and reset coins/upgrades?')){ localStorage.removeItem(SAVE_KEY); location.reload(); }
+});
+
+// ===== UPDATE LOOP =====
+function update(){
+  const stats = currentStats();
+  // horizontal
+  if(keys.left) player.vx = -stats.moveSpeed;
+  else if(keys.right) player.vx = stats.moveSpeed;
+  else player.vx = 0;
+
+// Clamp player horizontally inside screen
+player.x = Math.max(player.w/2, Math.min(W - player.w/2, player.x));
+
+// Clamp player vertically to not go above top
+player.y = Math.max(player.h/2, Math.min(H - player.h/2 + 50, player.y));
+  
+  // jetpack active: if owned & holding space (gravity flipped recently) give small thrust
+  if(save.owned.jetpack && save.settings.sound && holdingSpace()){} // sound handled during space press
+
+  // apply gravity
+  player.vy += gravityDir * stats.gravity;
+  if(player.vy > stats.maxFall) player.vy = stats.maxFall;
+  if(player.vy < -stats.maxFall) player.vy = -stats.maxFall;
+
+  // apply movement + collisions
+  let nx = player.x + player.vx;
+  let ny = player.y + player.vy;
+
+  // horizontal collision
+  if(!collides(nx, player.y)){
+    player.x = nx;
+  } else {
+    // slide to edge
+    while(!collides(player.x + Math.sign(player.vx)*0.1, player.y)){
+      player.x += Math.sign(player.vx)*0.1;
+    }
+    player.vx = 0;
+  }
+
+  // vertical collision
+  if(!collides(player.x, ny)){
+    player.y = ny;
+    player.onGround = false;
+  } else {
+    // landed or hit ceiling
+    // if collision from top vs bottom, we set onGround based on gravity
+    if(gravityDir>0 && player.vy>0){ player.onGround = true; }
+    if(gravityDir<0 && player.vy<0){ player.onGround = true; }
+    player.vy = 0;
+    // snap
+    while(!collides(player.x, player.y + Math.sign(player.vy||gravityDir)*0.1)){
+      player.y += Math.sign(player.vy||gravityDir)*0.1;
+    }
+  }
+
+  // top limit: don't die at top — instead clamp into world
+  if(player.y - player.h/2 < 0){
+    player.y = player.h/2;
+    player.vy = Math.max(0, player.vy);
+  }
+
+  // bottom death condition: if center falls below canvas + 50 -> death
+  if(player.y - player.h/2 > H + 50){
+    // lose one life and reset level OR if no lives left, respawn with same permanent upgrades
+    player.lives--;
+    sfxDeath();
+    if(player.lives <= 0){
+      // reset to level start and restore lives based on saved extraLives
+      startLevel(lvl);
+    } else {
+      resetLevel(); // respawn on same level with one less life
+    }
+    return;
+  }
+
+  // collect coins (check distance)
+  for(const c of coinsOnMap){
+    if(!c.collected){
+      const dx = Math.abs(c.x - player.x);
+      const dy = Math.abs(c.y - player.y);
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if(dist < 28 || (save.owned.magnet && dist < 120)){
+        c.collected = true;
+        const gain = 1 * stats.coinMult;
+        save.coins += gain;
+        if(save.settings.sound) sfxCoin();
+        saveNow();
+      }
+    }
+  }
+
+  // spikes -> instant die & go to level reset
+  if(spikeAt(player.x, player.y)){
+    sfxDeath();
+    resetLevel();
+    return;
+  }
+
+  // goal -> next level with reward
+  if(goalAt(player.x, player.y)){
+    // collect uncollected coins as bonus
+    let bonus = 0;
+    for(const c of coinsOnMap) if(!c.collected) { c.collected = true; bonus += 1 * stats.coinMult; }
+    // reward base + bonus
+    const baseReward = 5 + Math.floor(levels[lvl].length/2);
+    const total = (baseReward + bonus);
+    save.coins += total;
+    if(save.settings.sound) sfxGoal();
+    saveNow();
+    // show a tiny flash or effect (simple)
+    setTimeout(()=> nextLevel(), 300);
+  }
+}
+
+// helper for whether Space is held
+const keysHeld = {};
+window.addEventListener('keydown', e=>{ keysHeld[e.code]=true; });
+window.addEventListener('keyup', e=>{ keysHeld[e.code]=false; });
+function holdingSpace(){ return keysHeld['Space']; }
+
+// collision between AABB player and tiles
+function collides(px,py){
+  const left = px - player.w/2;
+  const right = px + player.w/2 - 1;
+  const top = py - player.h/2;
+  const bottom = py + player.h/2 - 1;
+  return solidAt(left, top) || solidAt(right, top) || solidAt(left, bottom) || solidAt(right, bottom);
+}
+
+// ===== DRAW =====
+function draw(){
+  // Clear entire canvas each frame
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // background gradient
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#07182b'); g.addColorStop(1,'#042034');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+  // draw tiles
+  for(let y=0;y<grid.length;y++){
+    for(let x=0;x<grid[y].length;x++){
+      const t = grid[y][x];
+      const px = x*TILE, py = y*TILE;
+      if(t===1){
+        ctx.fillStyle = '#21344f';
+        roundRect(ctx, px,py,TILE,TILE,8); ctx.fill();
+        ctx.fillStyle = '#12314a'; ctx.fillRect(px+6,py+6,TILE-12,TILE-12);
+      } else if(t===3){
+        ctx.fillStyle = '#2ec07e'; roundRect(ctx, px+6,py+6,TILE-12,TILE-12,6); ctx.fill();
+      } else if(t===4){
+        ctx.fillStyle = '#e45a5a'; ctx.fillRect(px+8,py+12,12,12); ctx.fillRect(px+28,py+12,12,12);
+      }
+    }
+  }
+
+  // draw coins
+  for(const c of coinsOnMap){
+    if(c.collected) continue;
+    // magnet effect: if magnet owned, slightly move coin toward player
+    if(save.owned.magnet){
+      const dx = player.x - c.x, dy = player.y - c.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if(d < 120 && d>1){
+        c.x += dx/d * 1.8;
+        c.y += dy/d * 1.8;
+      }
+    }
+    ctx.beginPath();
+    ctx.fillStyle='gold'; ctx.arc(c.x,c.y,10,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='10px system-ui'; ctx.fillText('¢', c.x-3, c.y+3);
+  }
+
+  // player (use skin draw function)
+  ctx.save();
+  const skin = skins.find(s=>s.id===save.equippedSkin) || skins[0];
+  skin.draw(ctx, player.x, player.y, player.w, player.h, gravityDir);
+  ctx.restore();
+
+  // HUD small
+  ctx.fillStyle = '#bfe1ff'; ctx.font='13px system-ui';
+  ctx.fillText('Flip gravity: SPACE', 14, H-10);
+  ctx.fillText(`Gravity: ${gravityDir>0? 'Down':'Up'}`, 200, H-10);
+}
+
+// roundRect helper for canvas drawing
+function roundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// ===== MAIN LOOP =====
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ===== LEVEL NAV =====
+function nextLevel(){
+  startLevel((lvl+1) % levels.length);
+}
+function resetLevel(){
+  startLevel(lvl);
+}
+
+// ===== UI & SHOP =====
+function updateUI(){
+  document.getElementById('coins').textContent = save.coins;
+  document.getElementById('coinDisplay').textContent = save.coins;
+  document.getElementById('modalCoins').textContent = save.coins;
+  document.getElementById('moves').textContent = moves;
+  document.getElementById('gravDir').textContent = gravityDir>0? 'Down':'Up';
+  document.getElementById('djState').textContent = currentStats().doubleJump ? 'Yes' : 'No';
+
+  // owned list
+  const ownedNames = Object.keys(save.owned).filter(k=>save.owned[k]).map(id=> upgradeDefs.find(u=>u.id===id)?.name || id);
+  document.getElementById('ownedList').textContent = ownedNames.length ? ownedNames.join(', ') : '—';
+  // perks area
+  const perksArea = document.getElementById('perksArea'); perksArea.innerHTML = '';
+  const stats = currentStats();
+  const items = [];
+  items.push(`Speed: ${(stats.moveSpeed).toFixed(2)}`);
+  items.push(`Gravity: ${(stats.gravity).toFixed(2)}`);
+  items.push(`Max fall: ${(stats.maxFall).toFixed(2)}`);
+  if(stats.doubleJump) items.push('Double Jump');
+  if(stats.magnet) items.push('Magnet');
+  if(stats.jetpack) items.push('Jetpack');
+  items.push(`Coin x${stats.coinMult}`);
+  perksArea.innerHTML = items.map(i=>`<div class="small">${i}</div>`).join('');
+
+  // level list
+  const ll = document.getElementById('levelList'); ll.innerHTML = '';
+  for(let i=0;i<levels.length;i++){
+    const el = document.createElement('div');
+    el.className='small'; el.style.padding='6px'; el.style.borderBottom='1px dashed rgba(255,255,255,0.03)';
+    el.innerHTML = `<strong>Level ${i+1}</strong> — ${levels[i].length} rows <button style="margin-left:8px" onclick="startLevel(${i})">Play</button>`;
+    ll.appendChild(el);
+  }
+
+  // owned skins
+  const skinsArea = document.getElementById('skinsArea'); skinsArea.innerHTML = '';
+  for(const s of skins){
+    const btn = document.createElement('button'); btn.textContent = save.equippedSkin===s.id? 'Equipped' : (save.skinsOwned[s.id]? 'Equip':'Buy');
+    btn.style.display='inline-block'; btn.style.margin='6px'; btn.onclick = ()=>{
+      if(save.skinsOwned[s.id]){ save.equippedSkin = s.id; saveNow(); } else {
+        if(save.coins >= s.price){ save.coins -= s.price; save.skinsOwned[s.id] = true; save.equippedSkin = s.id; saveNow(); } else alert('Not enough coins');
+      }
+    };
+    const wrap = document.createElement('div'); wrap.style.display='flex'; wrap.style.alignItems='center';
+    const sw = document.createElement('div'); sw.className='skin-swatch'; sw.title = s.name;
+    // draw swatch on small canvas
+    const c = document.createElement('canvas'); c.width=36; c.height=36; c.style.borderRadius='6px';
+    const cctx = c.getContext('2d'); cctx.fillStyle='#0000'; cctx.fillRect(0,0,36,36);
+    s.draw(cctx,18,18,26,26,1);
+    sw.appendChild(c);
+    const lab = document.createElement('div'); lab.style.marginLeft='8px'; lab.innerHTML = `<div style="font-weight:700">${s.name}</div><div class="small">${s.desc} ${s.price?` — ${s.price}¢`:''}</div>`;
+    wrap.appendChild(sw); wrap.appendChild(lab); wrap.appendChild(btn);
+    skinsArea.appendChild(wrap);
+  }
+}
+
+function openShop(){
+  document.getElementById('modal').style.display = 'flex';
+  renderUpgrades();
+  document.getElementById('modalCoins').textContent = save.coins;
+}
+function closeShop(){ document.getElementById('modal').style.display = 'none'; }
+
+function renderUpgrades(){
+  const container = document.getElementById('upgradesList'); container.innerHTML = '';
+  for(const u of upgradeDefs){
+    const box = document.createElement('div'); box.className='upgrade';
+    if(save.owned[u.id]) box.classList.add('bought');
+    const h = document.createElement('h4'); h.textContent = `${u.name} — ${u.price}¢`;
+    const p = document.createElement('div'); p.className='small'; p.textContent = u.desc;
+    const btn = document.createElement('button'); btn.textContent = save.owned[u.id]? 'Owned' : 'Buy';
+    btn.style.marginTop='8px';
+    btn.onclick = ()=>{
+      if(save.owned[u.id]) return;
+      // check requirement
+      if(u.req && !save.owned[u.req]){ alert(`Requires ${u.req}`); return; }
+      if(save.coins >= u.price){
+        save.coins -= u.price; save.owned[u.id] = true; // apply effect immediately in stats via save
+        // some upgrades like extraLives need to adjust save.upgrades
+        if(u.id === 'extrahp'){ save.extraLives = (save.extraLives||0) + 1; }
+        saveNow(); renderUpgrades(); updateUI();
+      } else {
+        alert('Not enough coins');
+      }
+    };
+    box.appendChild(h); box.appendChild(p); box.appendChild(btn);
+    container.appendChild(box);
+  }
+}
+
+// ===== INIT =====
+loadSave();
+startLevel(0);
+loop();
+updateUI();
+renderUpgrades();
+
+// expose small helpers (for inline onclick in generated level list)
+window.startLevel = startLevel;
+window.resetLevel = resetLevel;
+window.nextLevel = nextLevel;
+window.openShop = openShop;
+
+// optional: click sound toggles
+document.getElementById('toggleSound').addEventListener('change', (e)=>{
+  save.settings.sound = e.target.checked; saveNow();
+});
+document.getElementById('toggleMusic').addEventListener('change', (e)=>{
+  save.settings.music = e.target.checked; saveNow();
+});
+
+// small autosave interval
+setInterval(()=>saveNow(), 5000);
+
+(function() {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return console.log("No canvas found!");
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+
+    // Run it once immediately
+    resizeCanvas();
+
+    // Update on window resize
+    window.addEventListener('resize', resizeCanvas);
+
+    console.log("Canvas is now fullscreen!");
+})();
+  
+</script>
+</body>
+</html>

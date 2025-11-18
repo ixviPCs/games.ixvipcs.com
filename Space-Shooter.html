@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Space Shooter</title>
+  <style>
+    body {
+      background-color: black;
+      margin: 0;
+      overflow: hidden;
+      color: white;
+      font-family: monospace;
+      user-select: none;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background-color: #111;
+    }
+    #fullscreen-btn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #222;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      border-radius: 5px;
+      z-index: 1000;
+      user-select: none;
+    }
+    #fullscreen-btn:hover {
+      background: #555;
+    }
+    #codeBox {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 2px solid #fff;
+      background: #000;
+      color: #fff;
+      z-index: 1001;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="800" height="600"></canvas>
+  <button id="fullscreen-btn">Fullscreen</button>
+  <input id="codeBox" type="text" placeholder="Enter code...">
+
+  <script>
+    window.onload = function () {
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const fullscreenBtn = document.getElementById("fullscreen-btn");
+      const codeBox = document.getElementById("codeBox");
+
+      // === Ship Images ===
+      const playerStraightDefault = new Image(); playerStraightDefault.src = "images/GoingStraight.png";
+      const playerLeftDefault = new Image(); playerLeftDefault.src = "images/MovingLeft.png";
+      const playerRightDefault = new Image(); playerRightDefault.src = "images/MovingRight.png";
+
+      const toriSprite = new Image(); toriSprite.src = "images/torisship.png";
+
+      const gioLeft = new Image(); gioLeft.src = "images/GioLeft.png";
+      const gioRight = new Image(); gioRight.src = "images/GioRight.png";
+      const gioStraight = new Image(); gioStraight.src = "images/GioStraight.png";
+      const gioBulletImg = new Image(); gioBulletImg.src = "images/GioBullet.png";
+
+      let playerStraight = playerStraightDefault;
+      let playerLeft = playerLeftDefault;
+      let playerRight = playerRightDefault;
+
+      let currentShip = localStorage.getItem("playerShip") || "default";
+      setShipSprites(currentShip);
+
+      function setShipSprites(shipName) {
+        if (shipName === "tori") {
+          playerStraight = playerLeft = playerRight = toriSprite;
+        } else if (shipName === "gio") {
+          playerStraight = gioStraight;
+          playerLeft = gioLeft;
+          playerRight = gioRight;
+        } else {
+          playerStraight = playerStraightDefault;
+          playerLeft = playerLeftDefault;
+          playerRight = playerRightDefault;
+        }
+      }
+
+      // === Enemy & bullet images ===
+      const enemyImg = new Image(); enemyImg.src = "images/EnemyShip.png";
+      const bulletImg = new Image(); bulletImg.src = "images/bullet.png";
+      const heartImg = new Image(); heartImg.src = "images/heart.png";
+
+      const player = {
+        x: canvas.width/2-25,
+        y: canvas.height-60,
+        width: 50,
+        height: 50,
+        speed: 5,
+        currentImage: playerStraight,
+        get center() { return {x: this.x + this.width/2, y: this.y + this.height/2}; }
+      };
+
+      const bullets = [];
+      const enemies = [];
+      let keys = {};
+      let totalKills = 0;
+      let superKillCounter = 0;
+      let canUseSuper = false;
+      let superBeamActive = false;
+      let superBeamTimer = 0;
+
+      let lives = 3;
+      let maxLives = 3;
+      let gameOver = false;
+      let score = 0;
+      let lastFireTime = 0;
+      const fireCooldown = 200;
+
+      let zeroBulletCooldown = false;
+      let infiniteSuperBeam = false;
+      let invincibleMode = false;
+
+      document.addEventListener("keydown", (e)=>{
+        if ((e.key==="t"||e.key==="T") && codeBox.style.display!=="block") {
+          e.preventDefault();
+          codeBox.value = "";
+          codeBox.style.display="block";
+          codeBox.focus();
+          return;
+        }
+        if(codeBox.style.display==="block") return;
+        keys[e.code]=true;
+      });
+      document.addEventListener("keyup",(e)=>{keys[e.code]=false;});
+
+      codeBox.addEventListener("keydown",(e)=>{
+        if(e.key==="Enter"){
+          const code = codeBox.value.trim().toLowerCase();
+          if(["tori","default","gio"].includes(code)) {
+            currentShip = code;
+            localStorage.setItem("playerShip", currentShip);
+            setShipSprites(currentShip);
+          }
+          if(code==="zbfc01") zeroBulletCooldown=true;
+          if(code==="isb02") infiniteSuperBeam=true;
+          if(code==="tl03"){ maxLives=Math.min(10,lives+10); lives=maxLives; }
+          if(code==="ib04") invincibleMode=true;
+          if(code==="hpb05") lives=maxLives;
+
+          codeBox.value=""; codeBox.style.display="none";
+        }
+      });
+
+      function spawnEnemy(){
+        const size=40;
+        enemies.push({x:Math.random()*(canvas.width-size),y:-size,width:size,height:size,speed:2});
+      }
+
+      function enemyDestroyed(isSuperKill=false){
+        totalKills++; superKillCounter++;
+        if(superKillCounter>=30) canUseSuper=true;
+        score+=isSuperKill?300:100;
+      }
+
+      function checkCollision(a,b){
+        const pad=5;
+        return a.x+pad<b.x+b.width-pad && a.x+a.width-pad>b.x+pad && a.y+pad<b.y+b.height-pad && a.y+a.height>b.y+pad;
+      }
+
+      function checkPlayerEnemyCollision(player,enemy){
+        const c=player.center; const hb=4;
+        return c.x>=enemy.x && c.x<=enemy.x+enemy.width && c.y>=enemy.y+enemy.height-hb && c.y<=enemy.y+enemy.height;
+      }
+
+      function update(deltaTime){
+        if(gameOver) return;
+
+        // Player movement
+        if(keys["ArrowLeft"]){ player.x-=player.speed; player.currentImage=playerLeft; }
+        else if(keys["ArrowRight"]){ player.x+=player.speed; player.currentImage=playerRight; }
+        else player.currentImage=playerStraight;
+        player.x=Math.max(0,Math.min(canvas.width-player.width,player.x));
+
+        // Fire bullets
+        if(keys["ArrowUp"] && performance.now()-lastFireTime>(zeroBulletCooldown?0:fireCooldown)){
+          bullets.push({x:player.x+player.width/2-2,y:player.y,width:4,height:10,speed:7});
+          lastFireTime=performance.now();
+        }
+
+        // Super beam
+        if(keys["ArrowDown"] && (canUseSuper || infiniteSuperBeam) && !superBeamActive){
+          superBeamActive=true;
+          superBeamTimer=infiniteSuperBeam?5000:2500;
+          canUseSuper=false;
+
+          // Subtract 30 kills instead of resetting
+          superKillCounter -= 30;
+          if (superKillCounter < 0) superKillCounter = 0;
+        }
+        if(!infiniteSuperBeam && superBeamActive){
+          superBeamTimer-=deltaTime;
+          if(superBeamTimer<=0) superBeamActive=false;
+        }
+        if(infiniteSuperBeam && !keys["ArrowDown"]) superBeamActive=false;
+
+        // Update bullets
+        for(let i=bullets.length-1;i>=0;i--){ bullets[i].y-=bullets[i].speed; if(bullets[i].y<0) bullets.splice(i,1); }
+
+        // Update enemies
+        for(let i=enemies.length-1;i>=0;i--){
+          enemies[i].y+=enemies[i].speed;
+
+          for(let j=bullets.length-1;j>=0;j--){
+            if(checkCollision(enemies[i],bullets[j])){
+              enemies.splice(i,1); bullets.splice(j,1); enemyDestroyed(false); break;
+            }
+          }
+
+          if(i<enemies.length && checkPlayerEnemyCollision(player,enemies[i])){
+            enemies.splice(i,1);
+            if(!invincibleMode){ lives--; if(lives<=0){ gameOver=true; zeroBulletCooldown=false; infiniteSuperBeam=false; invincibleMode=false; maxLives=3; } }
+          }
+
+          if(i<enemies.length && enemies[i].y>canvas.height) enemies.splice(i,1);
+        }
+
+        if (superBeamActive) {
+  enemies.forEach((e, i) => {
+    // Check if enemy is within the vertical beam area
+    const beamX = player.x + player.width / 2 - 5;
+    const beamWidth = 10;
+    if (e.x + e.width > beamX && e.x < beamX + beamWidth) {
+      enemies.splice(i, 1);       // destroy enemy
+      enemyDestroyed(true);       // count as super kill
+    }
+  });
+}
+      }
+
+      function draw(){
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(player.currentImage,player.x,player.y,player.width,player.height);
+
+        bullets.forEach(b=>{ ctx.drawImage(currentShip==="gio"?gioBulletImg:bulletImg,b.x,b.y,b.width,b.height); });
+        enemies.forEach(e=>ctx.drawImage(enemyImg,e.x,e.y,e.width,e.height));
+        for(let i=0;i<lives;i++) ctx.drawImage(heartImg,canvas.width-(i+1)*40-10,10,30,30);
+
+        ctx.fillStyle="#ffffff"; ctx.font="20px monospace";
+        ctx.fillText("Score: "+score,canvas.width-130,50);
+        ctx.fillText("Kills: "+totalKills,10,30);
+        ctx.fillText("Super Beam: "+(infiniteSuperBeam?"♾️":superKillCounter+"/30"),10,60);
+
+        if(superBeamActive){ ctx.fillStyle="#FF5F1F"; ctx.fillRect(player.x+player.width/2-5,0,10,player.y); }
+
+        if(gameOver){ ctx.fillStyle="red"; ctx.font="60px monospace";
+          const text="💀GAME OVER💀"; ctx.fillText(text,(canvas.width-ctx.measureText(text).width)/2,canvas.height/2);
+        }
+      }
+
+      fullscreenBtn.addEventListener("click",()=>{
+        if(!document.fullscreenElement) canvas.requestFullscreen().catch(err=>alert(`Failed to enter fullscreen: ${err.message}`));
+        else document.exitFullscreen();
+      });
+
+      let lastTime=0;
+      function gameLoop(time=0){
+        const deltaTime=time-lastTime; lastTime=time;
+        if(!gameOver && Math.random()<0.02) spawnEnemy();
+        update(deltaTime);
+        draw();
+        requestAnimationFrame(gameLoop);
+      }
+      gameLoop();
+    };
+  </script>
+</body>
+</html>

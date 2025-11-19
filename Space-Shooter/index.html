@@ -369,10 +369,39 @@ if (shopMilestone > lastShopMilestone && !shopOpen) {
         requestAnimationFrame(gameLoop);
       }
 
+// Track purchased amount per ally
+const allies = [
+    {name:"Lil Ally 1", baseCost:30, cost:30, count:0, sprite:"<img src='ally.png' style='width:16px; height:16px;'>"},
+    {name:"Lil Ally 2", baseCost:550, cost:550, count:0, sprite:"<img src='ally.png' style='width:16px; height:16px;'>"},
+    {name:"Lil Ally 3", baseCost:70, cost:70, count:0, sprite:"<img src='ally.png' style='width:16px; height:16px;'>"},
+    {name:"Lil Ally 4", baseCost:90, cost:90, count:0, sprite:"<img src='ally.png' style='width:16px; height:16px;'>"}
+];
+
 const shopItemsData = [
-    {name:"Lil Ally", cost:3, sprite:"<img src='ally.png' style='width:16px; height:16px;'>", action: buyAlly },
-    {name:"Nuke 💣", cost:10, sprite:"💣", action: buyNuke },
-    {name:"Missile 🚀", cost:20, sprite:"🚀", action: buyMissile },
+    ...allies.map(ally => ({
+        name: ally.name,
+        cost: ally.cost,
+        sprite: ally.sprite,
+        action: () => {
+            // Increment ally stack and increase cost by 50% each purchase
+            ally.count++;
+            coins -= ally.cost;
+            ally.cost = Math.floor(ally.baseCost + ally.count * (ally.baseCost/2));
+            localStorage.setItem("coins", coins);
+            renderShop();
+            console.log(`${ally.name} purchased! Total: ${ally.count}`);
+        }
+    })),
+    {name:"Nuke 💣", cost:50, sprite:"💣", action: () => {
+        coins -= 50;
+        localStorage.setItem("coins", coins");
+        console.log("Nuke purchased!");
+    }},
+    {name:"Missile 🚀", cost:100, sprite:"🚀", action: () => {
+        coins -= 100;
+        localStorage.setItem("coins", coins");
+        console.log("Missile purchased!");
+    }}
 ];
 
 function renderShop() {

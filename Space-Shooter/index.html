@@ -51,7 +51,8 @@
 
   </style>
 <div id="shop" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-background:#111; border:2px solid #fff; border-radius:10px; padding:20px; z-index:1002; color:white; text-align:center;">
+background:#111; border:2px solid #fff; border-radius:10px; padding:20px; z-index:1002; color:white; text-align:center;
+min-width:300px; min-height:200px; max-height:400px; overflow-y:auto;">
     <h2>Shop</h2>
     <p>Coins: <span id="coinDisplay">0</span></p>
     <div id="shopItems" style="display:flex; flex-direction:column; gap:10px;"></div>
@@ -153,6 +154,14 @@ background:#111; border:2px solid #fff; border-radius:10px; padding:20px; z-inde
       let gameOver = false;
       let score = 0;
       let coins = parseInt(localStorage.getItem("coins")) || 0;
+      let gamePaused = false; // tracks if game is paused
+      function pauseGame() {
+          gamePaused = true;
+      }
+
+      function resumeGame() {
+          gamePaused = false;
+      }
       let lastCoinMilestone = 0; // tracks last 100-point milestone awarded
       let lastShopMilestone = 0; // tracks last 1000-point milestone for shop
       let lastFireTime = 0;
@@ -166,7 +175,7 @@ function openShop() {
     document.getElementById("shop").style.display = "block";
     document.getElementById("coinDisplay").innerText = coins;
     pauseGame();
-    renderShop();
+    renderShop(); // 🔹 Make sure this is here
 }
 
 function closeShop() {
@@ -372,19 +381,28 @@ function renderShop() {
     container.innerHTML = "";
     shopItemsData.forEach(item => {
         const div = document.createElement("div");
-        div.style.display="flex";
-        div.style.alignItems="center";
-        div.style.justifyContent="space-between";
-        div.innerHTML = `<span>${item.sprite} ${item.name} - ${item.cost}💰</span> <button>Buy</button>`;
+        div.style.display = "flex";
+        div.style.alignItems = "center";
+        div.style.justifyContent = "space-between";
+        div.style.background = "#222";
+        div.style.padding = "5px 10px";
+        div.style.borderRadius = "5px";
+        
+        // Add Buy button with visible styling
+        div.innerHTML = `<span>${item.sprite} ${item.name} - ${item.cost}💰</span>
+                         <button style="background:#555; color:white; border:none; border-radius:5px; padding:4px 8px; cursor:pointer;">Buy</button>`;
+        
         const btn = div.querySelector("button");
         btn.onclick = () => {
-            if(coins >= item.cost){
+            if (coins >= item.cost) {
                 coins -= item.cost;
                 localStorage.setItem("coins", coins);
                 document.getElementById("coinDisplay").innerText = coins;
                 item.action();
+            } else {
+                alert("Not enough coins!");
             }
-        }
+        };
         container.appendChild(div);
     });
 }

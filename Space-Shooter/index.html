@@ -158,21 +158,8 @@ background:#111; border:2px solid #fff; border-radius:10px; padding:20px; z-inde
       let lastFireTime = 0;
       const fireCooldown = 200;
       let gamePaused = false; // <--- ADD THIS
-
-      let zeroBulletCooldown = false;
-      let infiniteSuperBeam = false;
-      let invincibleMode = false;
       let shopOpen = false; // <--- ADD THIS HERE
-
-      document.addEventListener("keydown", (e)=>{
-        if ((e.key==="t"||e.key==="T") && codeBox.style.display!=="block") {
-          e.preventDefault();
-          codeBox.value = "";
-          codeBox.style.display="block";
-          codeBox.focus();
-          return;
-        }
-
+        
 function openShop() {
     shopOpen = true;
     codeBox.style.display = "none";
@@ -187,6 +174,19 @@ function closeShop() {
     document.getElementById("shop").style.display = "none";
     resumeGame();
 }
+      
+      let zeroBulletCooldown = false;
+      let infiniteSuperBeam = false;
+      let invincibleMode = false;
+
+      document.addEventListener("keydown", (e)=>{
+        if ((e.key==="t"||e.key==="T") && codeBox.style.display!=="block") {
+          e.preventDefault();
+          codeBox.value = "";
+          codeBox.style.display="block";
+          codeBox.focus();
+          return;
+        }
 
 document.addEventListener("keydown", (e)=>{
     if (e.key === "Escape" && shopOpen) {

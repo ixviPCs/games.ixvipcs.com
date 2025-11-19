@@ -162,6 +162,7 @@ background:#111; border:2px solid #fff; border-radius:10px; padding:20px; z-inde
       let zeroBulletCooldown = false;
       let infiniteSuperBeam = false;
       let invincibleMode = false;
+      let shopOpen = false; // <--- ADD THIS HERE
 
       document.addEventListener("keydown", (e)=>{
         if ((e.key==="t"||e.key==="T") && codeBox.style.display!=="block") {
@@ -171,8 +172,6 @@ background:#111; border:2px solid #fff; border-radius:10px; padding:20px; z-inde
           codeBox.focus();
           return;
         }
-
-let shopOpen = false;
 
 function openShop() {
     shopOpen = true;

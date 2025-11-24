@@ -4,155 +4,118 @@
   <title>Space Shooter</title>
   <link rel="icon" type="image/png" href="/favicon.png">
   <style>
-    body { background:black; margin:0; overflow:hidden; color:white; font-family:monospace; user-select:none; }
-    canvas { display:block; margin:auto; background:#111; }
-    #fullscreen-btn { position:fixed; top:10px; right:10px; background:#222; color:white; border:none; padding:8px 12px; cursor:pointer; font-size:14px; border-radius:5px; z-index:1000; user-select:none; }
-    #fullscreen-btn:hover { background:#555; }
-    #codeBox { position:fixed; top:20px; left:50%; transform:translateX(-50%); padding:10px; font-size:16px; border-radius:8px; border:2px solid #fff; background:#000; color:#fff; z-index:1001; display:none; }
-    #shop { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#111; border:2px solid #fff; border-radius:10px; padding:20px; z-index:1002; color:white; text-align:center; min-width:300px; min-height:200px; max-height:400px; overflow-y:auto; }
+    body{background:black;margin:0;overflow:hidden;color:white;font-family:monospace;user-select:none}
+    canvas{display:block;margin:auto;background:#111}
+    #fullscreen-btn{position:fixed;top:10px;right:10px;background:#222;color:white;border:none;padding:8px 12px;cursor:pointer;font-size:14px;border-radius:5px;z-index:1000;user-select:none}
+    #fullscreen-btn:hover{background:#555}
+    #codeBox{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:10px;font-size:16px;border-radius:8px;border:2px solid #fff;background:#000;color:#fff;z-index:1001;display:none}
+    #shop{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#111;border:2px solid #fff;border-radius:10px;padding:20px;z-index:1002;color:white;text-align:center;min-width:300px;min-height:200px;max-height:400px;overflow-y:auto}
   </style>
 </head>
 <body>
-  <canvas id="game" width="800" height="600"></canvas>
-  <button id="fullscreen-btn">Fullscreen</button>
-  <input id="codeBox" type="text" placeholder="Enter code...">
-  <div id="shop">
-    <h2>Shop</h2>
-    <p>Coins: <span id="coinDisplay">0</span></p>
-    <div id="shopItems" style="display:flex; flex-direction:column; gap:10px;"></div>
-    <p style="font-size:12px;">Press ESC to close</p>
-  </div>
+<canvas id="game" width="800" height="600"></canvas>
+<button id="fullscreen-btn">Fullscreen</button>
+<input id="codeBox" type="text" placeholder="Enter code...">
+<div id="shop">
+  <h2>Shop</h2>
+  <p>Coins: <span id="coinDisplay">0</span></p>
+  <div id="shopItems" style="display:flex; flex-direction:column; gap:10px;"></div>
+  <p style="font-size:12px;">Press ESC to close</p>
+</div>
 
-  <script>
+<script>
 window.onload=function(){
-  const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
-  const fullscreenBtn=document.getElementById("fullscreen-btn"),codeBox=document.getElementById("codeBox");
+const c=document.getElementById("game"),ctx=c.getContext("2d"),f=document.getElementById("fullscreen-btn"),cb=document.getElementById("codeBox");
+const imgs={playerStraightDefault:"GoingStraight.png",playerLeftDefault:"MovingLeft.png",playerRightDefault:"MovingRight.png",toriSprite:"torisship.png",gioLeft:"GioLeft.png",gioRight:"GioRight.png",gioStraight:"GioStraight.png",gioBullet:"GioBullet.png",enemy:"EnemyShip.png",bullet:"bullet.png",heart:"heart.png"};
+const loaded={};for(let k in imgs){loaded[k]=new Image();loaded[k].src=imgs[k];}
 
-  const images={
-    playerStraightDefault:"GoingStraight.png",
-    playerLeftDefault:"MovingLeft.png",
-    playerRightDefault:"MovingRight.png",
-    toriSprite:"torisship.png",
-    gioLeft:"GioLeft.png",
-    gioRight:"GioRight.png",
-    gioStraight:"GioStraight.png",
-    gioBullet:"GioBullet.png",
-    enemy:"EnemyShip.png",
-    bullet:"bullet.png",
-    heart:"heart.png"
-  };
+let currentShip=localStorage.getItem("playerShip")||"default";
+let playerSprites={straight:loaded.playerStraightDefault,left:loaded.playerLeftDefault,right:loaded.playerRightDefault};
+function setShipSprites(ship){
+  if(ship==="tori") playerSprites={straight:loaded.toriSprite,left:loaded.toriSprite,right:loaded.toriSprite};
+  else if(ship==="gio") playerSprites={straight:loaded.gioStraight,left:loaded.gioLeft,right:loaded.gioRight};
+  else playerSprites={straight:loaded.playerStraightDefault,left:loaded.playerLeftDefault,right:loaded.playerRightDefault};
+}
+setShipSprites(currentShip);
 
-  const loadedImages={};
-  for(let key in images){ loadedImages[key]=new Image(); loadedImages[key].src=images[key]; }
+const player={x:c.width/2-25,y:c.height-60,width:50,height:50,speed:5,get center(){return{x:this.x+this.width/2,y:this.y+this.height/2}},currentImage:playerSprites.straight};
+const bullets=[],enemies=[],allies=[{name:"Lil Ally 1",baseCost:30,cost:30,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"},
+{ name:"Lil Ally 2",baseCost:50,cost:50,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"},
+{ name:"Lil Ally 3",baseCost:70,cost:70,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"},
+{ name:"Lil Ally 4",baseCost:90,cost:90,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"}];
 
-  let currentShip=localStorage.getItem("playerShip")||"default";
-  let playerSprites={straight:loadedImages.playerStraightDefault,left:loadedImages.playerLeftDefault,right:loadedImages.playerRightDefault};
-  function setShipSprites(ship){
-    if(ship==="tori") playerSprites={straight:loadedImages.toriSprite,left:loadedImages.toriSprite,right:loadedImages.toriSprite};
-    else if(ship==="gio") playerSprites={straight:loadedImages.gioStraight,left:loadedImages.gioLeft,right:loadedImages.gioRight};
-    else playerSprites={straight:loadedImages.playerStraightDefault,left:loadedImages.playerLeftDefault,right:loadedImages.playerRightDefault};
-  }
-  setShipSprites(currentShip);
+let keys={},score=0,totalKills=0,superKillCounter=0,canUseSuper=false,superBeamActive=false,superBeamTimer=0;
+let lives=3,maxLives=3,gameOver=false,coins=parseInt(localStorage.getItem("coins"))||0,gamePaused=false,shopOpen=false,lastCoinMilestone=0,lastShopMilestone=0,lastFireTime=0;
+let zeroBulletCooldown=false,infiniteSuperBeam=false,invincibleMode=false;
 
-  const player={x:canvas.width/2-25,y:canvas.height-60,width:50,height:50,speed:5,get center(){return{x:this.x+this.width/2,y:this.y+this.height/2}},currentImage:playerSprites.straight};
-  const bullets=[],enemies=[];
-  let keys={},score=0,totalKills=0,superKillCounter=0,canUseSuper=false,superBeamActive=false,superBeamTimer=0;
-  let lives=3,maxLives=3,gameOver=false,coins=parseInt(localStorage.getItem("coins"))||0,gamePaused=false,shopOpen=false,lastCoinMilestone=0,lastShopMilestone=0,lastFireTime=0;
-  let zeroBulletCooldown=false,infiniteSuperBeam=false,invincibleMode=false;
+const shopItemsData=[...allies.map(a=>({name:a.name,cost:a.cost,sprite:a.sprite,action:()=>{a.count++;a.cost=Math.floor(a.baseCost+a.count*(a.baseCost/2));renderShop();console.log(a.name+" purchased! Total: "+a.count);}})),
+{name:"Nuke 💣",cost:50,sprite:"💣",action:()=>console.log("Nuke purchased!")},
+{name:"Missile 🚀",cost:100,sprite:"🚀",action:()=>console.log("Missile purchased!")}];
 
-  const allies=[{name:"Lil Ally 1",baseCost:30,cost:30,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"},
-                {name:"Lil Ally 2",baseCost:50,cost:50,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"},
-                {name:"Lil Ally 3",baseCost:70,cost:70,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"},
-                {name:"Lil Ally 4",baseCost:90,cost:90,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"}];
+function openShop(){ shopOpen=true; cb.style.display="none"; document.getElementById("shop").style.display="block"; document.getElementById("coinDisplay").innerText=coins; pauseGame(); renderShop(); }
+function closeShop(){ shopOpen=false; document.getElementById("shop").style.display="none"; resumeGame(); }
+function renderShop(){ const container=document.getElementById("shopItems"); container.innerHTML=""; shopItemsData.forEach(item=>{ const div=document.createElement("div"); div.style.display="flex"; div.style.alignItems="center"; div.style.justifyContent="space-between"; div.style.background="#222"; div.style.padding="5px 10px"; div.style.borderRadius="5px"; div.innerHTML=`<span>${item.sprite} ${item.name} - ${item.cost}💰</span><button style="background:#555;color:white;border:none;border-radius:5px;padding:4px 8px;cursor:pointer;">Buy</button>`; const btn=div.querySelector("button"); btn.onclick=()=>{ if(coins>=item.cost){ coins-=item.cost; localStorage.setItem("coins",coins); document.getElementById("coinDisplay").innerText=coins; item.action(); } else alert("Not enough coins!"); }; container.appendChild(div); }); }
 
-  const shopItemsData=[...allies.map(a=>({name:a.name,cost:a.cost,sprite:a.sprite,action:()=>{a.count++;a.cost=Math.floor(a.baseCost+a.count*(a.baseCost/2));renderShop();console.log(a.name+" purchased! Total: "+a.count);}})),
-                       {name:"Nuke 💣",cost:50,sprite:"💣",action:()=>console.log("Nuke purchased!")},
-                       {name:"Missile 🚀",cost:100,sprite:"🚀",action:()=>console.log("Missile purchased!")}];
+function pauseGame(){ gamePaused=true; } function resumeGame(){ gamePaused=false; }
 
-  function openShop(){ shopOpen=true; codeBox.style.display="none"; document.getElementById("shop").style.display="block"; document.getElementById("coinDisplay").innerText=coins; pauseGame(); renderShop(); }
-  function closeShop(){ shopOpen=false; document.getElementById("shop").style.display="none"; resumeGame(); }
-  function renderShop(){ const container=document.getElementById("shopItems"); container.innerHTML=""; shopItemsData.forEach(item=>{ const div=document.createElement("div"); div.style.display="flex"; div.style.alignItems="center"; div.style.justifyContent="space-between"; div.style.background="#222"; div.style.padding="5px 10px"; div.style.borderRadius="5px"; div.innerHTML=`<span>${item.sprite} ${item.name} - ${item.cost}💰</span><button style="background:#555;color:white;border:none;border-radius:5px;padding:4px 8px;cursor:pointer;">Buy</button>`; const btn=div.querySelector("button"); btn.onclick=()=>{ if(coins>=item.cost){ coins-=item.cost; localStorage.setItem("coins",coins); document.getElementById("coinDisplay").innerText=coins; item.action(); } else alert("Not enough coins!"); }; container.appendChild(div); }); }
+document.addEventListener("keydown",e=>{ if((e.key==="t"||e.key==="T")&&cb.style.display!=="block"){ e.preventDefault(); cb.value=""; cb.style.display="block"; cb.focus(); return; } if(cb.style.display==="block") return; keys[e.code]=true; });
+document.addEventListener("keyup",e=>{ keys[e.code]=false; });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&shopOpen) closeShop(); });
 
-  function pauseGame(){ gamePaused=true; } function resumeGame(){ gamePaused=false; }
+cb.addEventListener("keydown",e=>{ if(e.key==="Enter"){ const code=cb.value.trim().toLowerCase(); if(["tori","default","gio"].includes(code)){ currentShip=code; localStorage.setItem("playerShip",currentShip); setShipSprites(currentShip); } if(code==="zbfc01") zeroBulletCooldown=true; if(code==="isb02") infiniteSuperBeam=true; if(code==="tl03"){ maxLives=Math.min(10,lives+10); lives=maxLives; } if(code==="ib04") invincibleMode=true; if(code==="hpb05") lives=maxLives; cb.value=""; cb.style.display="none"; } });
 
-  document.addEventListener("keydown",e=>{ if((e.key==="t"||e.key==="T")&&codeBox.style.display!=="block"){ e.preventDefault(); codeBox.value=""; codeBox.style.display="block"; codeBox.focus(); return; } if(codeBox.style.display==="block") return; keys[e.code]=true; });
-  document.addEventListener("keyup",e=>{ keys[e.code]=false; });
-  document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&shopOpen) closeShop(); });
+f.addEventListener("click",()=>{ if(!document.fullscreenElement) c.requestFullscreen().catch(err=>alert(`Failed to enter fullscreen: ${err.message}`)); else document.exitFullscreen(); });
 
-  codeBox.addEventListener("keydown",e=>{ if(e.key==="Enter"){ const code=codeBox.value.trim().toLowerCase(); if(["tori","default","gio"].includes(code)){ currentShip=code; localStorage.setItem("playerShip",currentShip); setShipSprites(currentShip); } if(code==="zbfc01") zeroBulletCooldown=true; if(code==="isb02") infiniteSuperBeam=true; if(code==="tl03"){ maxLives=Math.min(10,lives+10); lives=maxLives; } if(code==="ib04") invincibleMode=true; if(code==="hpb05") lives=maxLives; codeBox.value=""; codeBox.style.display="none"; } });
+function spawnEnemy(){ const size=40; enemies.push({x:Math.random()*(c.width-size),y:-size,width:size,height:size,speed:2}); }
+function enemyDestroyed(isSuperKill=false){ totalKills++; superKillCounter++; if(superKillCounter>=30) canUseSuper=true; score+=isSuperKill?300:100; }
+function checkCollision(a,b){ return a.x<b.x+b.width && a.x+a.width>b.x && a.y<b.y+b.height && a.y+a.height>b.y; }
+function checkPlayerEnemyCollision(p,e){ return p.x+p.width>e.x && p.x<e.x+e.width && p.y+p.height>e.y && p.y<e.y+e.height; }
 
-  fullscreenBtn.addEventListener("click",()=>{ if(!document.fullscreenElement) canvas.requestFullscreen().catch(err=>alert(`Failed to enter fullscreen: ${err.message}`)); else document.exitFullscreen(); });
+function update(dt){
+if(gameOver||gamePaused) return;
+if(keys["ArrowLeft"]){ player.x-=player.speed; player.currentImage=playerSprites.left; }
+else if(keys["ArrowRight"]){ player.x+=player.speed; player.currentImage=playerSprites.right; }
+else player.currentImage=playerSprites.straight;
+player.x=Math.max(0,Math.min(c.width-player.width,player.x));
 
-  function spawnEnemy(){ const size=40; enemies.push({x:Math.random()*(canvas.width-size),y:-size,width:size,height:size,speed:2}); }
-  function enemyDestroyed(isSuperKill=false){ totalKills++; superKillCounter++; if(superKillCounter>=30) canUseSuper=true; score+=isSuperKill?300:100; }
-  function checkCollision(a,b){ return a.x<a.x+a.width && a.x+b.width>a.x && a.y<a.y+a.height && a.y+b.height>a.y; }
-  function checkPlayerEnemyCollision(p,e){ const c=p.center; return c.x>=e.x && c.x<=e.x+e.width && c.y>=e.y && c.y<=e.y+e.height; }
+if(keys["ArrowUp"]&&performance.now()-lastFireTime>(zeroBulletCooldown?0:200)){ bullets.push({x:player.x+player.width/2-2,y:player.y,width:4,height:10,speed:7}); lastFireTime=performance.now(); }
 
-  function update(deltaTime){
-    if(gameOver||gamePaused) return;
-    // Movement
-    if(keys["ArrowLeft"]){ player.x-=player.speed; player.currentImage=playerSprites.left; }
-    else if(keys["ArrowRight"]){ player.x+=player.speed; player.currentImage=playerSprites.right; }
-    else player.currentImage=playerSprites.straight;
-    player.x=Math.max(0,Math.min(canvas.width-player.width,player.x));
+if(keys["ArrowDown"]&&(canUseSuper||infiniteSuperBeam)&&!superBeamActive){ superBeamActive=true; superBeamTimer=infiniteSuperBeam?5000:2500; canUseSuper=false; superKillCounter-=30; if(superKillCounter<0) superKillCounter=0; }
+if(!infiniteSuperBeam&&superBeamActive){ superBeamTimer-=dt; if(superBeamTimer<=0) superBeamActive=false; }
+if(infiniteSuperBeam&&!keys["ArrowDown"]) superBeamActive=false;
 
-    // Fire
-    if(keys["ArrowUp"]&&performance.now()-lastFireTime>(zeroBulletCooldown?0:200)){ bullets.push({x:player.x+player.width/2-2,y:player.y,width:4,height:10,speed:7}); lastFireTime=performance.now(); }
+for(let i=bullets.length-1;i>=0;i--){ bullets[i].y-=bullets[i].speed; if(bullets[i].y<0) bullets.splice(i,1); }
+for(let i=enemies.length-1;i>=0;i--){
+  const e=enemies[i]; e.y+=e.speed;
+  let milestone=Math.floor(score/100); if(milestone>lastCoinMilestone){ coins++; lastCoinMilestone=milestone; localStorage.setItem("coins",coins); }
+  let shopMilestone=Math.floor(score/1000); if(shopMilestone>lastShopMilestone&&!shopOpen){ openShop(); lastShopMilestone=shopMilestone; }
+  for(let j=bullets.length-1;j>=0;j--){ if(checkCollision(e,bullets[j])){ enemies.splice(i,1); bullets.splice(j,1); enemyDestroyed(false); break; } }
+  if(i<enemies.length && checkPlayerEnemyCollision(player,e)){ enemies.splice(i,1); if(!invincibleMode){ lives--; if(lives<=0){ gameOver=true; zeroBulletCooldown=false; infiniteSuperBeam=false; invincibleMode=false; maxLives=3; } } }
+  if(i<enemies.length && e.y>c.height) enemies.splice(i,1);
+}
 
-    // Super beam
-    if(keys["ArrowDown"]&&(canUseSuper||infiniteSuperBeam)&&!superBeamActive){ superBeamActive=true; superBeamTimer=infiniteSuperBeam?5000:2500; canUseSuper=false; superKillCounter-=30; if(superKillCounter<0) superKillCounter=0; }
-    if(!infiniteSuperBeam&&superBeamActive){ superBeamTimer-=deltaTime; if(superBeamTimer<=0) superBeamActive=false; }
-    if(infiniteSuperBeam&&!keys["ArrowDown"]) superBeamActive=false;
+if(superBeamActive){ const beamX=player.x+player.width/2-5; const bw=10; for(let i=enemies.length-1;i>=0;i--){ const e=enemies[i]; if(e.x+e.width>beamX&&e.x<beamX+bw){ enemies.splice(i,1); enemyDestroyed(true); } } }
+}
 
-    // Bullets
-    for(let i=bullets.length-1;i>=0;i--){ bullets[i].y-=bullets[i].speed; if(bullets[i].y<0) bullets.splice(i,1); }
+function draw(){
+ctx.clearRect(0,0,c.width,c.height);
+ctx.drawImage(player.currentImage,player.x,player.y,player.width,player.height);
+bullets.forEach(b=>ctx.drawImage(currentShip==="gio"?loaded.gioBullet:loaded.bullet,b.x,b.y,b.width,b.height));
+enemies.forEach(e=>ctx.drawImage(loaded.enemy,e.x,e.y,e.width,e.height));
+for(let i=0;i<lives;i++) ctx.drawImage(loaded.heart,c.width-(i+1)*40-10,10,30,30);
+ctx.fillStyle="#fff"; ctx.font="20px monospace";
+ctx.fillText("Score: "+score,c.width-130,50);
+ctx.fillText("Kills: "+totalKills,10,30);
+ctx.fillText("Super Beam: "+(infiniteSuperBeam?"♾️":superKillCounter+"/30"),10,60);
+if(superBeamActive) ctx.fillStyle="#FF5F1F", ctx.fillRect(player.x+player.width/2-5,0,10,player.y);
+if(gameOver){ ctx.fillStyle="red"; ctx.font="60px monospace"; const t="💀GAME OVER💀"; ctx.fillText(t,(c.width-ctx.measureText(t).width)/2,c.height/2); }
+}
 
-    // Enemies
-    for(let i=enemies.length-1;i>=0;i--){
-      enemies[i].y+=enemies[i].speed;
-      // Coins & shop
-      let milestone=Math.floor(score/100);
-      if(milestone>lastCoinMilestone){ coins++; lastCoinMilestone=milestone; localStorage.setItem("coins",coins); }
-      let shopMilestone=Math.floor(score/1000);
-      if(shopMilestone>lastShopMilestone&&!shopOpen){ openShop(); lastShopMilestone=shopMilestone; }
+function loadImages(imgObj,cbk){ const imgs=Object.values(imgObj); let loadedCount=0; const total=imgs.length; imgs.forEach(img=>{ img.onload=img.onerror=()=>{ loadedCount++; if(loadedCount===total) cbk(); } }); }
 
-      for(let j=bullets.length-1;j>=0;j--){ if(checkCollision(enemies[i],bullets[j])){ enemies.splice(i,1); bullets.splice(j,1); enemyDestroyed(false); break; } }
-
-      if(i<enemies.length && checkPlayerEnemyCollision(player,enemies[i])){ enemies.splice(i,1); if(!invincibleMode){ lives--; if(lives<=0){ gameOver=true; zeroBulletCooldown=false; infiniteSuperBeam=false; invincibleMode=false; maxLives=3; } } }
-      if(i<enemies.length && enemies[i].y>canvas.height) enemies.splice(i,1);
-    }
-
-    // Super beam hit
-    if(superBeamActive){ const beamX=player.x+player.width/2-5; const beamWidth=10; for(let i=enemies.length-1;i>=0;i--){ if(enemies[i].x+enemies[i].width>beamX&&enemies[i].x<beamX+beamWidth){ enemies.splice(i,1); enemyDestroyed(true); } } }
-  }
-
-  function draw(){
-    if(gamePaused) return;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(player.currentImage,player.x,player.y,player.width,player.height);
-    bullets.forEach(b=>ctx.drawImage(currentShip==="gio"?loadedImages.gioBullet:loadedImages.bullet,b.x,b.y,b.width,b.height));
-    enemies.forEach(e=>ctx.drawImage(loadedImages.enemy,e.x,e.y,e.width,e.height));
-    for(let i=0;i<lives;i++) ctx.drawImage(loadedImages.heart,canvas.width-(i+1)*40-10,10,30,30);
-
-    ctx.fillStyle="#fff"; ctx.font="20px monospace";
-    ctx.fillText("Score: "+score,canvas.width-130,50);
-    ctx.fillText("Kills: "+totalKills,10,30);
-    ctx.fillText("Super Beam: "+(infiniteSuperBeam?"♾️":superKillCounter+"/30"),10,60);
-
-    if(superBeamActive) ctx.fillStyle="#FF5F1F", ctx.fillRect(player.x+player.width/2-5,0,10,player.y);
-    if(gameOver){ ctx.fillStyle="red"; ctx.font="60px monospace"; const text="💀GAME OVER💀"; ctx.fillText(text,(canvas.width-ctx.measureText(text).width)/2,canvas.height/2); }
-  }
-
-  function loadImages(imagesObj,callback){
-    const imgs=Object.values(imagesObj); let loaded=0; const total=imgs.length;
-    imgs.forEach(img=>{ img.onload=img.onerror=()=>{ loaded++; if(loaded===total) callback(); } });
-  }
-
-  let lastTime=0;
-  function gameLoop(time=0){ const deltaTime=time-lastTime; lastTime=time; if(!gameOver&&Math.random()<0.02) spawnEnemy(); update(deltaTime); draw(); requestAnimationFrame(gameLoop); }
-
-  loadImages(loadedImages,()=>{ gameLoop(); });
+let lastTime=0; function loop(time=0){ const dt=time-lastTime; lastTime=time; if(!gameOver&&Math.random()<0.02) spawnEnemy(); update(dt); draw(); requestAnimationFrame(loop); }
+loadImages(loaded,()=>{ loop(); });
 };
-  </script>
+</script>
 </body>
 </html>

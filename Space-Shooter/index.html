@@ -40,18 +40,40 @@ function setShipSprites(ship){
 setShipSprites(currentShip);
 
 const player={x:c.width/2-25,y:c.height-60,width:50,height:50,speed:5,get center(){return{x:this.x+this.width/2,y:this.y+this.height/2}},currentImage:playerSprites.straight};
-const bullets=[],enemies=[],allies=[{name:"Lil Ally 1",baseCost:30,cost:30,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"},
-{ name:"Lil Ally 2",baseCost:50,cost:50,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"},
-{ name:"Lil Ally 3",baseCost:70,cost:70,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"},
-{ name:"Lil Ally 4",baseCost:90,cost:90,count:0,sprite:"<img src='ally.png' style='width:16px;height:16px;'>"}];
+const bullets=[],enemies=[];
 
+// --- ALLIES SYSTEM ---
+const allies = []; // empty at start
+
+function buyAlly(){
+  if(coins>=30){
+    coins-=30;
+    const a = {
+      radius: 60,           // distance from player
+      spinSpeed: 0.05,      // orbit speed
+      rotation: 0,          // self rotation
+      rotationSpeed: -0.1,  // spin direction
+      shootTimer: 0,        // cooldown
+      _orbitAngle: 0,
+      sprite: new Image()
+    };
+    a.sprite.src = "ally.png"; // ensure ally.png exists
+    allies.push(a);
+    console.log("Ally bought! Total:", allies.length);
+  }
+}
+
+// --- SHOP INTEGRATION ---
+const shopItemsData = [
+  {name:"Ally 🛡️", cost:30, sprite:"<img src='ally.png' style='width:16px;height:16px;'>", action:buyAlly},
+  {name:"Nuke 💣", cost:50, sprite:"💣", action:()=>console.log("Nuke purchased!")},
+  {name:"Missile 🚀", cost:100, sprite:"🚀", action:()=>console.log("Missile purchased!")}
+];
+
+// existing coins, keys, score...
 let keys={},score=0,totalKills=0,superKillCounter=0,canUseSuper=false,superBeamActive=false,superBeamTimer=0;
 let lives=3,maxLives=3,gameOver=false,coins=parseInt(localStorage.getItem("coins"))||0,gamePaused=false,shopOpen=false,lastCoinMilestone=0,lastShopMilestone=0,lastFireTime=0;
 let zeroBulletCooldown=false,infiniteSuperBeam=false,invincibleMode=false;
-
-const shopItemsData=[...allies.map(a=>({name:a.name,cost:a.cost,sprite:a.sprite,action:()=>{a.count++;a.cost=Math.floor(a.baseCost+a.count*(a.baseCost/2));renderShop();console.log(a.name+" purchased! Total: "+a.count);}})),
-{name:"Nuke 💣",cost:50,sprite:"💣",action:()=>console.log("Nuke purchased!")},
-{name:"Missile 🚀",cost:100,sprite:"🚀",action:()=>console.log("Missile purchased!")}];
 
 function openShop(){ shopOpen=true; cb.style.display="none"; document.getElementById("shop").style.display="block"; document.getElementById("coinDisplay").innerText=coins; pauseGame(); renderShop(); }
 function closeShop(){ shopOpen=false; document.getElementById("shop").style.display="none"; resumeGame(); }
@@ -59,6 +81,7 @@ function renderShop(){ const container=document.getElementById("shopItems"); con
 
 function pauseGame(){ gamePaused=true; } function resumeGame(){ gamePaused=false; }
 
+// input handlers remain same...
 document.addEventListener("keydown",e=>{ if((e.key==="t"||e.key==="T")&&cb.style.display!=="block"){ e.preventDefault(); cb.value=""; cb.style.display="block"; cb.focus(); return; } if(cb.style.display==="block") return; keys[e.code]=true; });
 document.addEventListener("keyup",e=>{ keys[e.code]=false; });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&shopOpen) closeShop(); });
@@ -74,6 +97,7 @@ function checkPlayerEnemyCollision(p,e){ return p.x+p.width>e.x && p.x<e.x+e.wid
 
 function update(dt){
 if(gameOver||gamePaused) return;
+// --- player movement & shooting ---
 if(keys["ArrowLeft"]){ player.x-=player.speed; player.currentImage=playerSprites.left; }
 else if(keys["ArrowRight"]){ player.x+=player.speed; player.currentImage=playerSprites.right; }
 else player.currentImage=playerSprites.straight;
@@ -81,11 +105,14 @@ player.x=Math.max(0,Math.min(c.width-player.width,player.x));
 
 if(keys["ArrowUp"]&&performance.now()-lastFireTime>(zeroBulletCooldown?0:200)){ bullets.push({x:player.x+player.width/2-2,y:player.y,width:4,height:10,speed:7}); lastFireTime=performance.now(); }
 
+// super beam logic
 if(keys["ArrowDown"]&&(canUseSuper||infiniteSuperBeam)&&!superBeamActive){ superBeamActive=true; superBeamTimer=infiniteSuperBeam?5000:2500; canUseSuper=false; superKillCounter-=30; if(superKillCounter<0) superKillCounter=0; }
 if(!infiniteSuperBeam&&superBeamActive){ superBeamTimer-=dt; if(superBeamTimer<=0) superBeamActive=false; }
 if(infiniteSuperBeam&&!keys["ArrowDown"]) superBeamActive=false;
 
+// update bullets
 for(let i=bullets.length-1;i>=0;i--){ bullets[i].y-=bullets[i].speed; if(bullets[i].y<0) bullets.splice(i,1); }
+// update enemies
 for(let i=enemies.length-1;i>=0;i--){
   const e=enemies[i]; e.y+=e.speed;
   let milestone=Math.floor(score/100); if(milestone>lastCoinMilestone){ coins++; lastCoinMilestone=milestone; localStorage.setItem("coins",coins); }
@@ -95,6 +122,23 @@ for(let i=enemies.length-1;i>=0;i--){
   if(i<enemies.length && e.y>c.height) enemies.splice(i,1);
 }
 
+// --- ALLIES UPDATE ---
+const count = allies.length;
+allies.forEach((a,i)=>{
+  a.angle = a.angle || 0;
+  a.angle += a.spinSpeed;
+  a._orbitAngle = (Math.PI*2/count)*i + a.angle;
+  a.rotation += a.rotationSpeed;
+  a.shootTimer -= dt;
+  if(a.shootTimer <= 0){
+    bullets.push({x:player.x + player.width/2 + a.radius*Math.cos(a._orbitAngle)-2,
+                  y:player.y + player.height/2 + a.radius*Math.sin(a._orbitAngle),
+                  width:4,height:10,speed:7});
+    a.shootTimer = 1000;
+  }
+});
+
+// super beam hits enemies
 if(superBeamActive){ const beamX=player.x+player.width/2-5; const bw=10; for(let i=enemies.length-1;i>=0;i--){ const e=enemies[i]; if(e.x+e.width>beamX&&e.x<beamX+bw){ enemies.splice(i,1); enemyDestroyed(true); } } }
 }
 
@@ -103,6 +147,18 @@ ctx.clearRect(0,0,c.width,c.height);
 ctx.drawImage(player.currentImage,player.x,player.y,player.width,player.height);
 bullets.forEach(b=>ctx.drawImage(currentShip==="gio"?loaded.gioBullet:loaded.bullet,b.x,b.y,b.width,b.height));
 enemies.forEach(e=>ctx.drawImage(loaded.enemy,e.x,e.y,e.width,e.height));
+
+// --- DRAW ALLIES ---
+allies.forEach(a=>{
+  const x=player.x + player.width/2 + a.radius*Math.cos(a._orbitAngle)-10;
+  const y=player.y + player.height/2 + a.radius*Math.sin(a._orbitAngle)-10;
+  ctx.save();
+  ctx.translate(x+10,y+10);
+  ctx.rotate(a.rotation);
+  ctx.drawImage(a.sprite,-10,-10,20,20);
+  ctx.restore();
+});
+
 for(let i=0;i<lives;i++) ctx.drawImage(loaded.heart,c.width-(i+1)*40-10,10,30,30);
 ctx.fillStyle="#fff"; ctx.font="20px monospace";
 ctx.fillText("Score: "+score,c.width-130,50);

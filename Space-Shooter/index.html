@@ -195,24 +195,26 @@ alliesInGame.forEach((a,i)=>{
   a.angle += a.orbitSpeed;
   a.spin += a.spinSpeed;
 
-  let angle = 0;
+  let baseAngle = -Math.PI/2; // start at top
   const r = 70;
 
   if(count === 1){
-    angle = 0; // just anywhere, e.g. above player
+    baseAngle = 0; // just above player
   } else if(count === 2){
-    angle = i * Math.PI; // opposite each other
+    baseAngle = -Math.PI/2; // top
+    baseAngle += i * Math.PI; // opposite
   } else if(count === 3){
-    angle = i * (Math.PI * 2 / 3); // triangle
+    baseAngle = -Math.PI/2; // triangle starts at top
+    baseAngle += i * (Math.PI * 2 / 3);
   } else if(count === 4){
-    angle = i * (Math.PI / 2); // square
+    baseAngle = -Math.PI/2; // square starts at top
+    baseAngle += i * (Math.PI / 2);
   }
 
-  // add their orbit rotation
-  angle += a.angle;
+  const angle = baseAngle + a.angle;
 
-  a._orbitX = player.center.x + Math.cos(angle)*r;
-  a._orbitY = player.center.y + Math.sin(angle)*r;
+  a._orbitX = player.center.x + Math.cos(angle) * r;
+  a._orbitY = player.center.y + Math.sin(angle) * r;
 
   a.shootTimer -= dt;
   if(a.shootTimer <= 0){

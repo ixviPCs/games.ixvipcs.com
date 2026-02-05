@@ -13,7 +13,10 @@
   </style>
 </head>
 <body>
-<canvas id="game" width="800" height="600"></canvas>
+<canvas id="game" width="800" height="700"></canvas>
+<button id="shop-btn" style="position:fixed;top:10px;right:100px;background:#222;color:white;border:none;padding:8px 12px;cursor:pointer;font-size:14px;border-radius:5px;z-index:1000;user-select:none">
+  Shop
+</button>
 <button id="fullscreen-btn">Fullscreen</button>
 <input id="codeBox" type="text" placeholder="Enter code...">
 <div id="shop">
@@ -39,17 +42,21 @@ function setShipSprites(ship){
 }
 setShipSprites(currentShip);
 
-const player={x:c.width/2-25,y:c.height-60,width:50,height:50,speed:5,get center(){return{x:this.x+this.width/2,y:this.y+this.height/2}},currentImage:playerSprites.straight};
+const player = {
+  x: c.width/2 - 25,
+  y: c.height - 120, // moved up from 60
+  width: 50,
+  height: 50,
+  speed: 5,
+  get center() { return { x: this.x + this.width/2, y: this.y + this.height/2 }; },
+  currentImage: playerSprites.straight
+};
 const bullets=[],enemies=[];
-const alliesData=[
-  {name:"Lil Ally 1",baseCost:30,cost:30,count:0},
-  {name:"Lil Ally 2",baseCost:50,cost:50,count:0},
-  {name:"Lil Ally 3",baseCost:70,cost:70,count:0},
-  {name:"Lil Ally 4",baseCost:90,cost:90,count:0}
-];
 
 // in-game allies array
 const alliesInGame = [];
+const allyCostLadder = [30, 50, 70, 90];
+let allyCount = 0;
 const allyImage = new Image(); allyImage.src="ally.png";
 const allyBulletImage = new Image(); allyBulletImage.src="allybullet.png";
 
@@ -57,51 +64,76 @@ let keys={},score=0,totalKills=0,superKillCounter=0,canUseSuper=false,superBeamA
 let lives=3,maxLives=3,gameOver=false,coins=parseInt(localStorage.getItem("coins"))||0,gamePaused=false,shopOpen=false,lastCoinMilestone=0,lastShopMilestone=0,lastFireTime=0;
 let zeroBulletCooldown=false,infiniteSuperBeam=false,invincibleMode=false;
 
-const shopItemsData=[...alliesData.map(a=>({name:a.name,cost:a.cost,sprite:"<img src='ally.png' style='width:16px;height:16px;'>",action:()=>{}})),
-{name:"Nuke 💣",cost:50,sprite:"💣",action:()=>console.log("Nuke purchased!")},
-{name:"Missile 🚀",cost:100,sprite:"🚀",action:()=>console.log("Missile purchased!")}];
+const shopItemsData = [
+  {
+    name: "Ally",
+    sprite: "<img src='ally.png' style='width:16px;height:16px;'>",
+    action: buyAlly
+  }
+];
+                     
+//{name:"Nuke 💣",cost:50,sprite:"💣",action:()=>console.log("Nuke purchased!")},
 
 // --- Allies buy logic ---
-function buyAllyButton(allyData){
-  return () => {
-    if(coins >= allyData.cost){
-      coins -= allyData.cost;
-      localStorage.setItem("coins", coins);
-      document.getElementById("coinDisplay").innerText = coins;
-      alliesInGame.push({
-        sprite: allyImage,
-        bulletSprite: allyBulletImage,
-        angle: 0,
-        radius: 60,
-        spinSpeed: 0.05,
-        rotation: 0,
-        rotationSpeed: -0.1,
-        shootTimer: 0
-      });
-      allyData.count++;
-      allyData.cost = Math.floor(allyData.baseCost + allyData.count*(allyData.baseCost/2));
-      renderShop();
-      console.log(`${allyData.name} purchased! Total: ${allyData.count}`);
-    } else alert("Not enough coins!");
+function buyAlly(){
+  if(allyCount >= 4) return;
+
+  const cost = allyCostLadder[allyCount];
+  if(coins < cost){
+    alert("Not enough coins!");
+    return;
   }
+
+  coins -= cost;
+  localStorage.setItem("coins", coins);
+  document.getElementById("coinDisplay").innerText = coins;
+
+  alliesInGame.push({
+  sprite: allyImage,
+  bulletSprite: allyBulletImage,
+
+  // orbit stuff
+  angle: 0,
+  radius: 60,
+  orbitSpeed: 0.03, // clockwise
+
+  // self spin stuff
+  spin: 0,
+  spinSpeed: -0.08, // counter-clockwise
+
+  shootTimer: 0
+});
+
+  allyCount++;
+  renderShop();
 }
-shopItemsData.forEach(item=>{ if(item.name.startsWith("Lil Ally")) item.action = buyAllyButton(alliesData.find(a=>a.name===item.name)); });
 
 // --- Shop rendering ---
 function openShop(){ shopOpen=true; cb.style.display="none"; document.getElementById("shop").style.display="block"; document.getElementById("coinDisplay").innerText=coins; pauseGame(); renderShop(); }
 function closeShop(){ shopOpen=false; document.getElementById("shop").style.display="none"; resumeGame(); }
 function renderShop(){
-  const container=document.getElementById("shopItems"); container.innerHTML="";
-  shopItemsData.forEach(item=>{
-    const div=document.createElement("div");
-    div.style.display="flex"; div.style.alignItems="center"; div.style.justifyContent="space-between";
-    div.style.background="#222"; div.style.padding="5px 10px"; div.style.borderRadius="5px";
-    div.innerHTML=`<span>${item.sprite} ${item.name} - ${item.cost}💰</span>
-      <button style="background:#555;color:white;border:none;border-radius:5px;padding:4px 8px;cursor:pointer;">Buy</button>`;
-    const btn=div.querySelector("button");
-    btn.onclick=item.action;
-    container.appendChild(div);
-  });
+  const container=document.getElementById("shopItems");
+  container.innerHTML="";
+
+  const cost = allyCount < 4 ? allyCostLadder[allyCount] : "MAX";
+
+  const div=document.createElement("div");
+  div.style.display="flex";
+  div.style.justifyContent="space-between";
+  div.style.background="#222";
+  div.style.padding="8px";
+  div.style.borderRadius="6px";
+
+  div.innerHTML=`
+    <span><img src="ally.png" style="width:16px;height:16px;"> Ally - ${cost}💰</span>
+    <button>${cost==="MAX"?"MAX":"Buy"}</button>
+  `;
+
+  const btn = div.querySelector("button");
+  if(cost !== "MAX") btn.onclick = buyAlly;
+  else btn.disabled = true;
+
+  container.appendChild(div);
 }
 
 function pauseGame(){ gamePaused=true; } function resumeGame(){ gamePaused=false; }
@@ -151,24 +183,32 @@ for(let i=bullets.length-1;i>=0;i--){ bullets[i].y-=bullets[i].speed; if(bullets
 for(let i=enemies.length-1;i>=0;i--){
   const e=enemies[i]; e.y+=e.speed;
   let milestone=Math.floor(score/100); if(milestone>lastCoinMilestone){ coins++; lastCoinMilestone=milestone; localStorage.setItem("coins",coins); }
-  let shopMilestone=Math.floor(score/1000); if(shopMilestone>lastShopMilestone&&!shopOpen){ openShop(); lastShopMilestone=shopMilestone; }
   for(let j=bullets.length-1;j>=0;j--){ if(checkCollision(e,bullets[j])){ enemies.splice(i,1); bullets.splice(j,1); enemyDestroyed(false); break; } }
   if(i<enemies.length && checkPlayerEnemyCollision(player,e)){ enemies.splice(i,1); if(!invincibleMode){ lives--; if(lives<=0){ gameOver=true; zeroBulletCooldown=false; infiniteSuperBeam=false; invincibleMode=false; maxLives=3; } } }
   if(i<enemies.length && e.y>c.height) enemies.splice(i,1);
 }
 
 // --- Allies update ---
-const dtMillis = 16; // approx
 const count = alliesInGame.length;
 alliesInGame.forEach((a,i)=>{
-  a.angle += a.spinSpeed;
-  const orbitAngle = (Math.PI*2/count)*i + a.angle;
-  a._orbitX = player.center.x + a.radius*Math.cos(orbitAngle);
-  a._orbitY = player.center.y + a.radius*Math.sin(orbitAngle);
-  a.rotation += a.rotationSpeed;
+  a.angle += a.orbitSpeed;
+  a.spin += a.spinSpeed;
+const angle = a.angle + (Math.PI * 2 / count) * i;
+  const r = 70;
+
+  a._orbitX = player.center.x + Math.cos(angle)*r;
+  a._orbitY = player.center.y + Math.sin(angle)*r;
+
   a.shootTimer -= dt;
-  if(a.shootTimer <=0){
-    bullets.push({x:a._orbitX-2, y:a._orbitY-5, width:4, height:10, speed:6, sprite:a.bulletSprite});
+  if(a.shootTimer <= 0){
+    bullets.push({
+      x:a._orbitX-2,
+      y:a._orbitY-5,
+      width:4,
+      height:10,
+      speed:6,
+      sprite:a.bulletSprite
+    });
     a.shootTimer = 1000;
   }
 });
@@ -183,7 +223,7 @@ ctx.clearRect(0,0,c.width,c.height);
 ctx.drawImage(player.currentImage,player.x,player.y,player.width,player.height);
 bullets.forEach(b=>ctx.drawImage(b.sprite || (currentShip==="gio"?loaded.gioBullet:loaded.bullet),b.x,b.y,b.width,b.height));
 enemies.forEach(e=>ctx.drawImage(loaded.enemy,e.x,e.y,e.width,e.height));
-alliesInGame.forEach(a=>{ ctx.save(); ctx.translate(a._orbitX,a._orbitY); ctx.rotate(a.rotation); ctx.drawImage(a.sprite,-10,-10,20,20); ctx.restore(); });
+alliesInGame.forEach(a=>{ ctx.save(); ctx.translate(a._orbitX,a._orbitY); ctx.rotate(a.spin); ctx.drawImage(a.sprite,-10,-10,20,20); ctx.restore(); });
 for(let i=0;i<lives;i++) ctx.drawImage(loaded.heart,c.width-(i+1)*40-10,10,30,30);
 ctx.fillStyle="#fff"; ctx.font="20px monospace";
 ctx.fillText("Score: "+score,c.width-130,50);
@@ -194,7 +234,7 @@ if(gameOver){ ctx.fillStyle="red"; ctx.font="60px monospace"; const t="💀GAME 
 }
 
 // --- Loop ---
-let lastTime=0; function loop(time=0){ const dt=time-lastTime; lastTime=time; if(!gameOver&&Math.random()<0.02) spawnEnemy(); update(dt); draw(); requestAnimationFrame(loop); }
+let lastTime=0; function loop(time=0){ const dt=time-lastTime; lastTime=time; if(!gameOver && !gamePaused && Math.random()<0.02) spawnEnemy(); update(dt); draw(); requestAnimationFrame(loop); }
 loop();
 };
 </script>

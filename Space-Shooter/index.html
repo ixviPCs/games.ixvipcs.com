@@ -217,17 +217,28 @@ alliesInGame.forEach((a,i)=>{
   a._orbitY = player.center.y + Math.sin(angle) * r;
 
   a.shootTimer -= dt;
-  if(a.shootTimer <= 0){
+if(a.shootTimer <= 0){
+  if(superBeamActive){
+    // Mini super beam for ally
     bullets.push({
-      x: a._orbitX - 2,
-      y: a._orbitY - 5,
+      x: a._orbitX,
+      width: 4,
+      isAllyBeam: true,
+      _targetY: a._orbitY // track where to end the beam
+    });
+  } else {
+    // Normal bullet
+    bullets.push({
+      x: a._orbitX-2,
+      y: a._orbitY-5,
       width: 4,
       height: 10,
       speed: 6,
       sprite: a.bulletSprite
     });
-    a.shootTimer = 1000;
   }
+  a.shootTimer = 1000;
+}
 });
 
 // --- Super Beam ---
@@ -238,6 +249,14 @@ if(superBeamActive){ const beamX=player.x+player.width/2-5; const bw=10; for(let
 function draw(){
 ctx.clearRect(0,0,c.width,c.height);
 ctx.drawImage(player.currentImage,player.x,player.y,player.width,player.height);
+bullets.forEach(b => {
+  if(b.isAllyBeam){
+    ctx.fillStyle = "#00d4ff"; // neon blue mini beam
+    ctx.fillRect(b.x, 0, b.width, b._targetY); // draw from top to ally Y
+} else {
+    ctx.drawImage(b.sprite || loaded.bullet, b.x, b.y, b.width, b.height);
+}
+});
 bullets.forEach(b=>ctx.drawImage(b.sprite || (currentShip==="gio"?loaded.gioBullet:loaded.bullet),b.x,b.y,b.width,b.height));
 enemies.forEach(e=>ctx.drawImage(loaded.enemy,e.x,e.y,e.width,e.height));
 alliesInGame.forEach(a=>{ ctx.save(); ctx.translate(a._orbitX,a._orbitY); ctx.rotate(a.spin); ctx.drawImage(a.sprite,-10,-10,20,20); ctx.restore(); });

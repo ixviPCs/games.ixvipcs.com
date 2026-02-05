@@ -56,9 +56,9 @@ const bullets=[],enemies=[];
 
 // in-game allies array
 const alliesInGame = [];
-const allyCostLadder = [30, 50, 70, 90];
-let allyCount = 0;
-const allyImage = new Image(); allyImage.src="ally.png";
+const CostLadder = [30, 50, 70, 90];
+let Count = 0;
+const Image = new Image(); Image.src=".png";
 const allyBulletImage = new Image(); allyBulletImage.src="allybullet.png";
 
 let keys={},score=0,totalKills=0,superKillCounter=0,canUseSuper=false,superBeamActive=false,superBeamTimer=0;
@@ -231,8 +231,8 @@ if(a.shootTimer <= 0){
     bullets.push({
       x: a._orbitX-2,
       y: a._orbitY-5,
-      width: 4,
-      height: 10,
+      width: 5,
+      height: 5,
       speed: 6,
       sprite: a.bulletSprite
     });

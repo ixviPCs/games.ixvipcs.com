@@ -194,8 +194,22 @@ const count = alliesInGame.length;
 alliesInGame.forEach((a,i)=>{
   a.angle += a.orbitSpeed;
   a.spin += a.spinSpeed;
-const angle = a.angle + (Math.PI * 2 / count) * i;
+
+  let angle = 0;
   const r = 70;
+
+  if(count === 1){
+    angle = 0; // just anywhere, e.g. above player
+  } else if(count === 2){
+    angle = i * Math.PI; // opposite each other
+  } else if(count === 3){
+    angle = i * (Math.PI * 2 / 3); // triangle
+  } else if(count === 4){
+    angle = i * (Math.PI / 2); // square
+  }
+
+  // add their orbit rotation
+  angle += a.angle;
 
   a._orbitX = player.center.x + Math.cos(angle)*r;
   a._orbitY = player.center.y + Math.sin(angle)*r;
@@ -203,12 +217,12 @@ const angle = a.angle + (Math.PI * 2 / count) * i;
   a.shootTimer -= dt;
   if(a.shootTimer <= 0){
     bullets.push({
-      x:a._orbitX-2,
-      y:a._orbitY-5,
-      width:4,
-      height:10,
-      speed:6,
-      sprite:a.bulletSprite
+      x: a._orbitX - 2,
+      y: a._orbitY - 5,
+      width: 4,
+      height: 10,
+      speed: 6,
+      sprite: a.bulletSprite
     });
     a.shootTimer = 1000;
   }

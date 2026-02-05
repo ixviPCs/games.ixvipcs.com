@@ -32,7 +32,7 @@ document.getElementById("shop-btn").onclick = openShop;
 console.log("No cheats here, try pushing T 🤫");
 const c=document.getElementById("game"),ctx=c.getContext("2d"),f=document.getElementById("fullscreen-btn"),cb=document.getElementById("codeBox");
 const imgs={playerStraightDefault:"GoingStraight.png",playerLeftDefault:"MovingLeft.png",playerRightDefault:"MovingRight.png",toriSprite:"torisship.png",gioLeft:"GioLeft.png",gioRight:"GioRight.png",gioStraight:"GioStraight.png",gioBullet:"GioBullet.png",enemy:"EnemyShip.png",bullet:"bullet.png",heart:"heart.png"};
-const loaded={};for(let k in imgs){loaded[k]=new Image();loaded[k].src=imgs[k];}
+const loaded={};for(let k in imgs){loaded[k] = new window.Image();loaded[k].src=imgs[k];}
 
 let currentShip=localStorage.getItem("playerShip")||"default";
 let playerSprites={straight:loaded.playerStraightDefault,left:loaded.playerLeftDefault,right:loaded.playerRightDefault};

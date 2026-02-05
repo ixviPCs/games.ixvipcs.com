@@ -28,6 +28,7 @@
 
 <script>
 window.onload=function(){
+document.getElementById("shop-btn").onclick = openShop;
 console.log("No cheats here, try pushing T 🤫");
 const c=document.getElementById("game"),ctx=c.getContext("2d"),f=document.getElementById("fullscreen-btn"),cb=document.getElementById("codeBox");
 const imgs={playerStraightDefault:"GoingStraight.png",playerLeftDefault:"MovingLeft.png",playerRightDefault:"MovingRight.png",toriSprite:"torisship.png",gioLeft:"GioLeft.png",gioRight:"GioRight.png",gioStraight:"GioStraight.png",gioBullet:"GioBullet.png",enemy:"EnemyShip.png",bullet:"bullet.png",heart:"heart.png"};

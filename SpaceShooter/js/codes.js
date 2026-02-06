@@ -1,6 +1,4 @@
 // codes.js
-const codeBox = document.getElementById("codeBox");
-
 codeBox.addEventListener("keydown", e => {
   if(e.key === "Enter"){
     const code = codeBox.value.trim().toLowerCase();

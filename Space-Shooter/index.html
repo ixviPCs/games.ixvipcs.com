@@ -217,17 +217,19 @@ alliesInGame.forEach((a,i)=>{
   a._orbitY = player.center.y + Math.sin(angle) * r;
 
   a.shootTimer -= dt;
-if(a.shootTimer <= 0){
-  if(superBeamActive){
-    // Mini super beam for ally
-    bullets.push({
+if(superBeamActive){
+  // Only create the mini beam if it doesn't exist yet
+  if(!a.miniBeam){
+    a.miniBeam = {
       x: a._orbitX,
-      width: 4,
-      isAllyBeam: true,
-      _targetY: a._orbitY // track where to end the beam
-    });
-  } else {
-    // Normal bullet
+      width: 5,
+      color: "#00d4ff"
+    };
+  }
+} else {
+  // Normal bullet
+  a.shootTimer -= dt;
+  if(a.shootTimer <= 0){
     bullets.push({
       x: a._orbitX-2,
       y: a._orbitY-5,
@@ -236,8 +238,10 @@ if(a.shootTimer <= 0){
       speed: 6,
       sprite: a.bulletSprite
     });
+    a.shootTimer = 1000;
   }
-  a.shootTimer = 1000;
+  // Remove mini beam if super beam stops
+  a.miniBeam = null;
 }
 });
 
@@ -255,6 +259,11 @@ bullets.forEach(b => {
     ctx.fillRect(b.x, 0, b.width, b._targetY); // draw from top to ally Y
 } else {
     ctx.drawImage(b.sprite || loaded.bullet, b.x, b.y, b.width, b.height);
+}
+if(a.miniBeam){
+  ctx.fillStyle = a.miniBeam.color;
+  // Draw from top to ally position each frame
+  ctx.fillRect(a._orbitX - a.miniBeam.width/2, 0, a.miniBeam.width, a._orbitY);
 }
 });
 bullets.forEach(b=>ctx.drawImage(b.sprite || (currentShip==="gio"?loaded.gioBullet:loaded.bullet),b.x,b.y,b.width,b.height));

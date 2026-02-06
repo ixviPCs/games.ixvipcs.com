@@ -253,22 +253,20 @@ if(superBeamActive){ const beamX=player.x+player.width/2-5; const bw=10; for(let
 function draw(){
 ctx.clearRect(0,0,c.width,c.height);
 ctx.drawImage(player.currentImage,player.x,player.y,player.width,player.height);
-if(a.miniBeam){
-  ctx.fillStyle = a.miniBeam.color;
-  // Draw from top to ally position each frame
-  ctx.fillRect(a._orbitX - a.miniBeam.width/2, 0, a.miniBeam.width, a._orbitY);
-}
 bullets.forEach(b => {
   if(b.isAllyBeam){
     ctx.fillStyle = "#00d4ff"; // neon blue mini beam
-    ctx.fillRect(b.x, 0, b.width, b._targetY); // draw from top to ally Y
-} else {
+    ctx.fillRect(b.x, 0, b.width, b._targetY); // draw from top to target
+  } else {
     ctx.drawImage(b.sprite || loaded.bullet, b.x, b.y, b.width, b.height);
-}
+  }
 });
 bullets.forEach(b=>ctx.drawImage(b.sprite || (currentShip==="gio"?loaded.gioBullet:loaded.bullet),b.x,b.y,b.width,b.height));
 enemies.forEach(e=>ctx.drawImage(loaded.enemy,e.x,e.y,e.width,e.height));
-alliesInGame.forEach(a=>{ ctx.save(); ctx.translate(a._orbitX,a._orbitY); ctx.rotate(a.spin); ctx.drawImage(a.sprite,-10,-10,20,20); ctx.restore(); });
+alliesInGame.forEach(a=>{ ctx.save(); ctx.translate(a._orbitX,a._orbitY); ctx.rotate(a.spin); ctx.drawImage(a.sprite,-10,-10,20,20); ctx.restore(); if(a.miniBeam){
+  ctx.fillStyle = a.miniBeam.color;
+  ctx.fillRect(a._orbitX - a.miniBeam.width/2, 0, a.miniBeam.width, a._orbitY);
+} });
 for(let i=0;i<lives;i++) ctx.drawImage(loaded.heart,c.width-(i+1)*40-10,10,30,30);
 ctx.fillStyle="#fff"; ctx.font="20px monospace";
 ctx.fillText("Score: "+score,c.width-130,50);

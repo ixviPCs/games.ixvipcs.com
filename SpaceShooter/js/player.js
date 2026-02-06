@@ -45,3 +45,4 @@ function updatePlayer(dt) {
   if(keys["ArrowDown"] && (canUseSuper || infiniteSuperBeam) && !superBeamActive){
     superBeamActive = true;
     superBeamTimer = infiniteSuperBeam ? 5000 : 2500;
+  }

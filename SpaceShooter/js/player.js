@@ -46,3 +46,4 @@ function updatePlayer(dt) {
     superBeamActive = true;
     superBeamTimer = infiniteSuperBeam ? 5000 : 2500;
   }
+}

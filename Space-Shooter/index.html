@@ -92,16 +92,10 @@ function buyAlly(){
   alliesInGame.push({
   sprite: allyImage,
   bulletSprite: allyBulletImage,
-
-  // orbit stuff
   angle: 0,
-  radius: 60,
-  orbitSpeed: 0.03, // clockwise
-
-  // self spin stuff
   spin: 0,
-  spinSpeed: -0.08, // counter-clockwise
-
+  spinSpeed: -0.08,
+  orbitSpeed: 0.03,
   shootTimer: 0
 });
 
@@ -190,29 +184,32 @@ for(let i=enemies.length-1;i>=0;i--){
 }
 
 // --- Allies update ---
+const r = 70;
 const count = alliesInGame.length;
-alliesInGame.forEach((a,i)=>{
-  a.angle += a.orbitSpeed;
+
+// rotate the whole formation together
+const baseRotation = performance.now() * 0.001;
+
+alliesInGame.forEach((a, i) => {
   a.spin += a.spinSpeed;
 
-  const r = 70;
-let angle;
+  let offset = 0;
 
-if (count === 1) {
-  angle = a.angle;
-}
-else if (count === 2) {
-  angle = a.angle + (i === 0 ? 0 : Math.PI); // straight line
-}
-else if (count === 3) {
-  angle = a.angle + i * (Math.PI * 2 / 3); // triangle
-}
-else if (count === 4) {
-  angle = a.angle + i * (Math.PI / 2); // square
-}
+  if (count === 1) {
+    offset = 0;
+  } else if (count === 2) {
+    offset = i === 0 ? 0 : Math.PI;
+  } else if (count === 3) {
+    offset = i * (Math.PI * 2 / 3);
+  } else if (count === 4) {
+    offset = i * (Math.PI / 2);
+  }
 
-a._orbitX = player.center.x + Math.cos(angle) * r;
-a._orbitY = player.center.y + Math.sin(angle) * r;
+  const angle = baseRotation + offset;
+
+  a._orbitX = player.center.x + Math.cos(angle) * r;
+  a._orbitY = player.center.y + Math.sin(angle) * r;
+});
 
   a.shootTimer -= dt;
 if(superBeamActive){

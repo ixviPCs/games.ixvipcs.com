@@ -1,1 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Space Shooter</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <style>
+    body {
+      background: black;
+      margin: 0;
+      overflow: hidden;
+      color: white;
+      font-family: monospace;
+      user-select: none;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background: #111;
+    }
+    #fullscreen-btn, #shop-btn {
+      position: fixed;
+      top: 10px;
+      background: #222;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      border-radius: 5px;
+      z-index: 1000;
+      user-select: none;
+    }
+    #shop-btn { right: 100px; }
+    #fullscreen-btn { right: 10px; }
+    #codeBox {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 2px solid #fff;
+      background: #000;
+      color: #fff;
+      z-index: 1001;
+      display: none;
+    }
+    #shop {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      background: #111;
+      border: 2px solid #fff;
+      border-radius: 10px;
+      padding: 20px;
+      z-index: 1002;
+      color: white;
+      text-align: center;
+      min-width: 300px;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    #shopItems { display: flex; flex-direction: column; gap: 10px; }
+  </style>
+</head>
+<body>
 
+<canvas id="game" width="800" height="700"></canvas>
+<button id="shop-btn">Shop</button>
+<button id="fullscreen-btn">Fullscreen</button>
+<input id="codeBox" type="text" placeholder="Enter code...">
+
+<div id="shop">
+  <h2>Shop</h2>
+  <p>Coins: <span id="coinDisplay">0</span></p>
+  <div id="shopItems"></div>
+  <p style="font-size:12px;">Press ESC to close</p>
+</div>
+
+<!-- Load images and global variables first -->
+<script>
+  const loaded = {};
+  const imgs = {
+    playerStraightDefault:"GoingStraight.png",
+    playerLeftDefault:"MovingLeft.png",
+    playerRightDefault:"MovingRight.png",
+    toriSprite:"torisship.png",
+    gioLeft:"GioLeft.png",
+    gioRight:"GioRight.png",
+    gioStraight:"GioStraight.png",
+    gioBullet:"GioBullet.png",
+    enemy:"EnemyShip.png",
+    bullet:"bullet.png",
+    heart:"heart.png"
+  };
+  for(let k in imgs){ loaded[k] = new Image(); loaded[k].src = imgs[k]; }
+
+  // Global variables used across files
+  let canvas = document.getElementById("game");
+  let keys = {}, bullets = [], score=0, totalKills=0, lives=3, maxLives=3, coins=parseInt(localStorage.getItem("coins"))||0;
+  let gamePaused=false, shopOpen=false, lastFireTime=0;
+  let superKillCounter=0, canUseSuper=false, superBeamActive=false, superBeamTimer=0;
+  let zeroBulletCooldown=false, infiniteSuperBeam=false, invincibleMode=false;
+</script>
+
+<!-- Modular JS files -->
+<script src="player.js"></script>
+<script src="enemies.js"></script>
+<script src="allies.js"></script>
+<script src="shop.js"></script>
+<script src="codes.js"></script>
+<script src="main.js"></script>
+
+</body>
+</html>

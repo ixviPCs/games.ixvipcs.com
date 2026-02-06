@@ -99,12 +99,6 @@
     heart:"Images/heart.png"
   };
   for(let k in imgs){ loaded[k] = new Image(); loaded[k].src = imgs[k]; }
-
-  // Global variables used across files
-  let keys = {}, bullets = [], score=0, totalKills=0, lives=3, maxLives=3, coins=parseInt(localStorage.getItem("coins"))||0;
-  let gamePaused=false, shopOpen=false, lastFireTime=0;
-  let superKillCounter=0, canUseSuper=false, superBeamActive=false, superBeamTimer=0;
-  let zeroBulletCooldown=false, infiniteSuperBeam=false, invincibleMode=false;
 </script>
 
 <!-- Modular JS files -->

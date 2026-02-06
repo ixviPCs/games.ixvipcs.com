@@ -1,7 +1,4 @@
 // main.js
-// --- Canvas ---
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
 
 // --- Game state ---
 let gameOver = false;

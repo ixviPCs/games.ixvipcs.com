@@ -1,26 +1,45 @@
 // allies.js
-const alliesInGame = [];
+
+// --- Only define allyCostLadder & allyCount, do NOT redeclare alliesInGame ---
 const allyCostLadder = [30,50,70,90];
 let allyCount = 0;
 
-const allyImage = new Image(); allyImage.src = "/SpaceShooter/Images/ally.png";
-const allyBulletImage = new Image(); allyBulletImage.src = "/SpaceShooter/Images/allybullet.png";
+// --- Ally images ---
+const allyImage = new Image();
+allyImage.src = "/SpaceShooter/Images/ally.png"; // Make sure this path matches server
+const allyBulletImage = new Image();
+allyBulletImage.src = "/SpaceShooter/Images/allybullet.png";
 
-function buyAlly(){
+// --- Buy an ally ---
+function buyAlly() {
   if(allyCount >= 4) return;
+
   const cost = allyCostLadder[allyCount];
-  if(coins < cost){ showShopMessage("Not enough coins!"); return; }
+  if(coins < cost){
+    showShopMessage("Not enough coins!");
+    return;
+  }
 
   coins -= cost;
   localStorage.setItem("coins", coins);
   document.getElementById("coinDisplay").innerText = coins;
 
-  alliesInGame.push({ sprite: allyImage, bulletSprite: allyBulletImage, angle: 0, spin: 0, spinSpeed: -0.08, orbitSpeed: 0.03, shootTimer: 0 });
+  alliesInGame.push({
+    sprite: allyImage,
+    bulletSprite: allyBulletImage,
+    angle: 0,
+    spin: 0,
+    spinSpeed: -0.08,
+    orbitSpeed: 0.03,
+    shootTimer: 0
+  });
+
   allyCount++;
   renderShop();
 }
 
-function updateAllies(dt){
+// --- Update allies every frame ---
+function updateAllies(dt) {
   const r = 70;
   const count = alliesInGame.length;
   const baseRotation = performance.now() * 0.001;
@@ -39,17 +58,25 @@ function updateAllies(dt){
 
     a.shootTimer -= dt;
 
-    if(superBeamActive){
+    if(superBeamActive) {
       if(!a.miniBeam) a.miniBeam = { width: 5 };
       enemies.forEach((e, ei) => {
         const beamX = a._orbitX - a.miniBeam.width/2;
         if(e.x + e.width > beamX && e.x < beamX + a.miniBeam.width){
-          enemies.splice(ei, 1); enemyDestroyed(true);
+          enemies.splice(ei, 1);
+          enemyDestroyed(true);
         }
       });
     } else {
       if(a.shootTimer <= 0){
-        bullets.push({ x: a._orbitX-2, y: a._orbitY-5, width:5, height:5, speed:6, sprite: a.bulletSprite });
+        bullets.push({
+          x: a._orbitX-2,
+          y: a._orbitY-5,
+          width:5,
+          height:5,
+          speed:6,
+          sprite: a.bulletSprite
+        });
         a.shootTimer = 1000;
       }
       a.miniBeam = null;

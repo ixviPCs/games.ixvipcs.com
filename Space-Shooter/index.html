@@ -186,64 +186,51 @@ for(let i=enemies.length-1;i>=0;i--){
 // --- Allies update ---
 const r = 70;
 const count = alliesInGame.length;
-
-// rotate the whole formation together
 const baseRotation = performance.now() * 0.001;
 
 alliesInGame.forEach((a, i) => {
   a.spin += a.spinSpeed;
 
   let offset = 0;
-
-  if (count === 1) {
-    offset = 0;
-  } else if (count === 2) {
-    offset = i === 0 ? 0 : Math.PI;
-  } else if (count === 3) {
-    offset = i * (Math.PI * 2 / 3);
-  } else if (count === 4) {
-    offset = i * (Math.PI / 2);
-  }
+  if (count === 2) offset = i === 0 ? 0 : Math.PI;
+  else if (count === 3) offset = i * (Math.PI * 2 / 3);
+  else if (count === 4) offset = i * (Math.PI / 2);
 
   const angle = baseRotation + offset;
 
   a._orbitX = player.center.x + Math.cos(angle) * r;
   a._orbitY = player.center.y + Math.sin(angle) * r;
-});
 
+  // shooting / beam logic
   a.shootTimer -= dt;
-if(superBeamActive){
-  // Only create mini beam if it doesn't exist yet
-  if(!a.miniBeam){
-    a.miniBeam = { x: a._orbitX, width: 5, color: "#00d4ff" };
-  }
 
-  // --- NEW: damage enemies in beam path ---
-  enemies.forEach((e, i) => {
-    const beamX = a._orbitX - a.miniBeam.width/2;
-    const beamW = a.miniBeam.width;
-    if(e.x + e.width > beamX && e.x < beamX + beamW){
-      enemies.splice(i, 1);
-      enemyDestroyed(true); // counts as super kill
+  if (superBeamActive) {
+    if (!a.miniBeam) {
+      a.miniBeam = { width: 5 };
     }
-  });
-} else {
-  // Normal bullet
-  a.shootTimer -= dt;
-  if(a.shootTimer <= 0){
-    bullets.push({
-      x: a._orbitX-2,
-      y: a._orbitY-5,
-      width: 5,
-      height: 5,
-      speed: 6,
-      sprite: a.bulletSprite
+
+    enemies.forEach((e, ei) => {
+      const beamX = a._orbitX - a.miniBeam.width / 2;
+      if (e.x + e.width > beamX && e.x < beamX + a.miniBeam.width) {
+        enemies.splice(ei, 1);
+        enemyDestroyed(true);
+      }
     });
-    a.shootTimer = 1000;
+
+  } else {
+    if (a.shootTimer <= 0) {
+      bullets.push({
+        x: a._orbitX - 2,
+        y: a._orbitY - 5,
+        width: 5,
+        height: 5,
+        speed: 6,
+        sprite: a.bulletSprite
+      });
+      a.shootTimer = 1000;
+    }
+    a.miniBeam = null;
   }
-  // Remove mini beam if super beam stops
-  a.miniBeam = null;
-}
 });
 
 // --- Super Beam ---

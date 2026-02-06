@@ -253,17 +253,17 @@ if(superBeamActive){ const beamX=player.x+player.width/2-5; const bw=10; for(let
 function draw(){
 ctx.clearRect(0,0,c.width,c.height);
 ctx.drawImage(player.currentImage,player.x,player.y,player.width,player.height);
+if(a.miniBeam){
+  ctx.fillStyle = a.miniBeam.color;
+  // Draw from top to ally position each frame
+  ctx.fillRect(a._orbitX - a.miniBeam.width/2, 0, a.miniBeam.width, a._orbitY);
+}
 bullets.forEach(b => {
   if(b.isAllyBeam){
     ctx.fillStyle = "#00d4ff"; // neon blue mini beam
     ctx.fillRect(b.x, 0, b.width, b._targetY); // draw from top to ally Y
 } else {
     ctx.drawImage(b.sprite || loaded.bullet, b.x, b.y, b.width, b.height);
-}
-if(a.miniBeam){
-  ctx.fillStyle = a.miniBeam.color;
-  // Draw from top to ally position each frame
-  ctx.fillRect(a._orbitX - a.miniBeam.width/2, 0, a.miniBeam.width, a._orbitY);
 }
 });
 bullets.forEach(b=>ctx.drawImage(b.sprite || (currentShip==="gio"?loaded.gioBullet:loaded.bullet),b.x,b.y,b.width,b.height));

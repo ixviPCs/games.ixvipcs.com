@@ -3,8 +3,8 @@ const alliesInGame = [];
 const allyCostLadder = [30,50,70,90];
 let allyCount = 0;
 
-const allyImage = new Image(); allyImage.src = "../Images/ally.png";
-const allyBulletImage = new Image(); allyBulletImage.src = "../Images/allybullet.png";
+const allyImage = new Image(); allyImage.src = "/SpaceShooter/Images/ally.png";
+const allyBulletImage = new Image(); allyBulletImage.src = "/SpaceShooter/Images/allybullet.png";
 
 function buyAlly(){
   if(allyCount >= 4) return;

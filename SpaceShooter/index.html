@@ -82,8 +82,26 @@
   <p style="font-size:12px;">Press ESC to close</p>
 </div>
 
-<!-- Load images and global variables first -->
+<!-- --- Global variables and images --- -->
 <script>
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  // Game state
+  let gameOver = false, gamePaused = false, keys = {};
+  let score = 0, totalKills = 0, coins = parseInt(localStorage.getItem("coins")) || 0;
+  let lastFireTime = 0, canUseSuper = false, superBeamActive = false, superBeamTimer = 0;
+  let zeroBulletCooldown = false, infiniteSuperBeam = false, invincibleMode = false;
+  let lives = 3, maxLives = 3;
+
+  // Main entities
+  let player; // set in player.js
+  const bullets = [];
+  const enemies = [];
+  const alliesInGame = [];
+
+  // Images
+  const loaded = {};
   const imgs = {
     playerStraightDefault:"Images/GoingStraight.png",
     playerLeftDefault:"Images/MovingLeft.png",
@@ -95,12 +113,14 @@
     gioBullet:"Images/GioBullet.png",
     enemy:"Images/EnemyShip.png",
     bullet:"Images/bullet.png",
-    heart:"Images/heart.png"
+    heart:"Images/heart.png",
+    ally:"Images/ally.png",
+    allybullet:"Images/allybullet.png"
   };
   for(let k in imgs){ loaded[k] = new Image(); loaded[k].src = imgs[k]; }
 </script>
 
-<!-- Modular JS files -->
+<!-- --- JS Files (order matters!) --- -->
 <script src="js/main.js"></script>
 <script src="js/player.js"></script>
 <script src="js/enemies.js"></script>

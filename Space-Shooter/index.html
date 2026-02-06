@@ -196,12 +196,20 @@ alliesInGame.forEach((a,i)=>{
   a.spin += a.spinSpeed;
 
   const r = 70;
+let angle;
 
-// evenly spaced around circle based on count
-const spacing = (Math.PI * 2) / count;
-
-// center formations so they are symmetric
-const angle = (i * spacing) + a.angle;
+if (count === 1) {
+  angle = a.angle;
+}
+else if (count === 2) {
+  angle = a.angle + (i === 0 ? 0 : Math.PI); // straight line
+}
+else if (count === 3) {
+  angle = a.angle + i * (Math.PI * 2 / 3); // triangle
+}
+else if (count === 4) {
+  angle = a.angle + i * (Math.PI / 2); // square
+}
 
 a._orbitX = player.center.x + Math.cos(angle) * r;
 a._orbitY = player.center.y + Math.sin(angle) * r;
